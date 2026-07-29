@@ -1,0 +1,50 @@
+{
+  "name": "turbospace",
+  "version": "1.0.0",
+  "description": "TurboSpace — limpeza de TEMP, Prefetch, Docker, Gradle/Android, npm/pip e Desktop. Autoria Dizodias Digital Engineering (https://dizodias.com)",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "server": "node index.mjs",
+    "dist": "electron-builder --win portable"
+  },
+  "license": "ISC",
+  "author": "Dizodias Digital Engineering <https://dizodias.com>",
+  "build": {
+    "appId": "com.dizodias.turbospace",
+    "productName": "TurboSpace",
+    "copyright": "Copyright © Dizodias Digital Engineering — https://dizodias.com",
+    "asar": false,
+    "compression": "maximum",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "cleaners/**/*",
+      "public/**/*",
+      "index.mjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "TurboSpace-Portatil.exe",
+      "requestExecutionLevel": "admin",
+      "unicode": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
+  }
+}
