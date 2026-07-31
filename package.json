@@ -9,7 +9,7 @@
     "server": "node index.mjs",
     "dist": "electron-builder --win portable"
   },
-  "license": "ISC",
+  "license": "MIT",
   "author": "Dizodias Digital Engineering <https://dizodias.com>",
   "build": {
     "appId": "com.dizodias.turbospace",

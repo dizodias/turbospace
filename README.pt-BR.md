@@ -109,4 +109,4 @@ O `electron/main.cjs` sobe o servidor como processo filho, espera a porta respon
 
 ## Licença
 
-ISC — © Dizodias Digital Engineering
+MIT — © 2026 Lucas Geisler Dias

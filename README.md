@@ -109,4 +109,4 @@ TurboSpace/
 
 ## License
 
-ISC — © Dizodias Digital Engineering
+MIT — © 2026 Lucas Geisler Dias
