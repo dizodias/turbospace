@@ -59,9 +59,10 @@
       "category": "public.app-category.utilities",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
+      "identity": null,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "artifactName": "TurboSpace-${version}-${arch}.${ext}"
+      "artifactName": "TurboSpace-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
       "title": "TurboSpace ${version}",
