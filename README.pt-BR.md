@@ -1,6 +1,6 @@
 # TurboSpace
 
-> Limpador de desktop para Windows — TEMP, Prefetch, Docker, Gradle/Android, npm/pip, caches de navegador e mais.
+> Limpador de desktop para **Windows** e **macOS** — temporários, caches, Docker, Gradle/Android, npm/pip e mais.
 
 **Autoria:** [Dizodias Digital Engineering](https://dizodias.com)
 
@@ -10,21 +10,31 @@
 
 ## Recursos
 
-- Limpa `%TEMP%` do usuário, `C:\Windows\Temp` e Prefetch
+### Compartilhados
+- Limpeza de temp do usuário (`%TEMP%` / `$TMPDIR`)
 - Docker prune (`docker system prune -af`, volumes preservados)
 - Caches do Gradle e do Android SDK (AVDs não são removidos)
 - Limpeza de cache do npm e do pip
 - Lixo no Desktop (`.tmp`, `.log`, `.bak`, `.old`) e seleção de arquivos grandes
-- Extras do Windows: Lixeira, miniaturas, cache de navegador, dumps, Delivery Optimization, shader cache, cache do Windows Update
-- Janela nativa Electron (sem depender do navegador)
+- Cache de navegadores
+- Janela nativa Electron
+
+### Windows
+- `C:\Windows\Temp`, Prefetch, Lixeira, miniaturas, Delivery Optimization, cache do Windows Update, shaders DirectX, dumps
 - `.exe` portátil com elevação para Administrador
+
+### macOS
+- Lixeira (`~/.Trash`), `~/Library/Caches` com whitelist, DiagnosticReports (>7 dias), Xcode DerivedData
+- Empacotamento DMG / ZIP (notarização Apple opcional)
 
 ## Requisitos
 
 | Modo | Requisitos |
 |------|------------|
-| Desenvolvimento | Windows 10/11 (x64), [Node.js](https://nodejs.org/) 18+, privilégios de Administrador |
-| Portátil | Apenas Windows 10/11 (x64) — não precisa instalar Node.js |
+| Desenvolvimento (Windows) | Windows 10/11 (x64), [Node.js](https://nodejs.org/) 18+, Administrador recomendado |
+| Desenvolvimento (macOS) | macOS 12+, Node.js 18+ |
+| Portátil Windows | Apenas Windows 10/11 (x64) |
+| Build macOS | Host macOS para `npm run dist:mac` |
 
 ## Início rápido (desenvolvimento)
 
@@ -33,21 +43,17 @@ npm install
 npm start
 ```
 
-Ou dê duplo clique em `Iniciar.bat` (solicita Administrador e abre o Electron a partir do código-fonte).
+- **Windows:** duplo clique em `Iniciar.bat`.
+- **macOS:** duplo clique em `Iniciar.command` (ou `chmod +x Iniciar.command` uma vez).
 
-Uma tela de carregamento curta aparece e, em seguida, a interface com Analisar / Limpar.
-
-## Build portátil
+## Builds
 
 ```bash
-npm run dist
+npm run dist:win   # → dist/TurboSpace-Portatil.exe
+npm run dist:mac   # → dist/*.dmg e *.zip (precisa de macOS)
 ```
 
-Saída: `dist/TurboSpace-Portatil.exe`
-
-1. Execute o arquivo e aceite o aviso do UAC.
-2. Clique em **Analisar**, marque os alvos e use **Limpar selecionados**.
-3. O `.exe` é autossuficiente — pode ir para pen drive ou outro PC.
+Notarização (opcional): defina `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` e `APPLE_TEAM_ID` antes do `dist:mac`.
 
 ## Modo servidor (sem janela)
 
@@ -55,57 +61,47 @@ Saída: `dist/TurboSpace-Portatil.exe`
 npm run server
 ```
 
-Acesse `http://127.0.0.1:3860`. Para trocar a porta:
-
-```bash
-set PORT=3861
-```
+Acesse `http://127.0.0.1:3860`. Porta alternativa: `PORT=3861`.
 
 ## Estrutura do projeto
 
 ```
 TurboSpace/
-├── build/           # Ícones do app (icon.ico / icon.png)
-├── cleaners/        # Rotinas de limpeza (TEMP, Docker, npm, etc.)
-├── electron/        # Processo principal + preload do Electron
-├── public/          # Interface (HTML, i18n, assets, Tailwind)
-├── index.mjs        # API HTTP local (porta padrão 3860)
-├── Iniciar.bat      # Launcher de desenvolvimento (elevado)
-├── package.json
-└── README.md
+├── build/                 # Ícones + entitlements macOS
+├── cleaners/
+│   ├── platform/          # paths/drives/privilege/system (win32 | darwin)
+│   ├── targets/           # Catálogo de limpeza + registry
+│   └── measure.mjs        # Helpers de FS compartilhados
+├── electron/
+├── public/
+├── scripts/notarize.cjs
+├── index.mjs
+├── Iniciar.bat / Iniciar.command
+└── package.json
 ```
-
-| Parte | Caminho |
-|-------|---------|
-| Janela do app | `electron/main.cjs` |
-| Servidor HTTP local | `index.mjs` |
-| Interface | `public/index.html` |
-| Módulos de limpeza | `cleaners/*.mjs` |
-| Ícones de empacotamento | `build/icon.ico` |
-
-O `electron/main.cjs` sobe o servidor como processo filho, espera a porta responder e só então exibe a janela. Ao fechar a janela, o servidor é encerrado.
 
 ## Alvos de limpeza
 
-| Alvo | Ação |
-|------|------|
-| TEMP do usuário | Esvazia `%TEMP%` |
-| Windows Temp | Esvazia `C:\Windows\Temp` |
-| Prefetch | Esvazia `C:\Windows\Prefetch` |
-| Docker | `docker system prune -af` (sem volumes) |
-| Gradle | Remove `%USERPROFILE%\.gradle\caches` |
-| Android | Limpa caches do SDK (mantém AVDs) |
-| npm / pip | Limpa caches das ferramentas |
-| Desktop | Remove extensões de lixo + arquivos grandes opcionais |
-| Extras do Windows | Lixeira, miniaturas, caches de navegador/shader/update, etc. |
+| Alvo | Windows | macOS |
+|------|---------|-------|
+| Temp do usuário | sim | sim |
+| Windows Temp / Prefetch | sim | — |
+| Lixeira | Recycle Bin | Trash |
+| Cache de navegadores | sim | sim |
+| Caches de apps (whitelist) | — | sim |
+| Relatórios de falha | sim | DiagnosticReports (>7d) |
+| Xcode DerivedData | — | sim |
+| Docker / Gradle / Android / npm / pip | sim | sim |
+| Lixo no Desktop | sim | sim |
 
 ## Scripts
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm start` | Executa o app Electron |
-| `npm run server` | Somente o servidor HTTP |
-| `npm run dist` | Gera o executável portátil para Windows |
+| `npm start` | App Electron |
+| `npm run server` | Somente servidor HTTP |
+| `npm run dist` / `dist:win` | Executável portátil Windows |
+| `npm run dist:mac` | DMG + ZIP macOS |
 
 ## Licença
 

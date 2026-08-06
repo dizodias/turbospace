@@ -3,47 +3,31 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
 
 import {
   commandExists,
+  defaultVolumeId,
   formatBytes,
   getDriveFreeBytes,
+  getSystemInfo,
   isAdmin,
   listLogicalDrives,
-  normalizeDrive,
+  normalizeVolume,
+  openBrowser as platformOpenBrowser,
+  platformId,
   userPaths,
 } from './cleaners/measure.mjs';
 import {
-  cleanPrefetch,
-  cleanUserTemp,
-  cleanWinTemp,
-  measureTempTargets,
-} from './cleaners/temp.mjs';
-import { cleanDocker } from './cleaners/docker.mjs';
+  analyzeSelected,
+  cleanSelected,
+  groupsFor,
+  targetIdsFor,
+  targetsFor,
+} from './cleaners/targets/registry.mjs';
 import {
-  cleanAndroid,
-  cleanGradle,
-  measureGradleAndroid,
-} from './cleaners/gradle-android.mjs';
-import { cleanNpm, cleanPip, measureNpmPip } from './cleaners/npm-pip.mjs';
-import {
-  cleanDesktopJunk,
   deleteDesktopPaths,
   listLargeDesktopFiles,
-  measureDesktopJunk,
-} from './cleaners/desktop.mjs';
-import { getSystemInfo } from './cleaners/system.mjs';
-import {
-  cleanBrowserCache,
-  cleanCrashDumps,
-  cleanDeliveryOpt,
-  cleanRecycleBin,
-  cleanShaderCache,
-  cleanThumbnails,
-  cleanUpdateCache,
-  measureWindowsExtras,
-} from './cleaners/windows-extra.mjs';
+} from './cleaners/targets/desktop.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -68,7 +52,6 @@ async function loadSystemInfo() {
   return systemInfoPromise;
 }
 
-// Pré-aquece em paralelo com o boot do servidor
 loadSystemInfo().catch(() => {});
 
 const MIME = {
@@ -88,7 +71,14 @@ const state = {
   status: 'idle', // idle | analyzing | cleaning | ok | error
   lastMessage: 'Aguardando',
   busy: false,
-  drive: 'C:',
+  volume: defaultVolumeId(),
+  /** @deprecated use volume */
+  get drive() {
+    return this.volume;
+  },
+  set drive(v) {
+    this.volume = v;
+  },
 };
 
 /** @type {string[]} */
@@ -111,7 +101,7 @@ function broadcast(event, data) {
 function setStatus(status, lastMessage) {
   state.status = status;
   state.lastMessage = lastMessage;
-  broadcast('status', { ...state });
+  broadcast('status', { ...state, drive: state.volume, volume: state.volume });
 }
 
 function logLine(line, stream = 'stdout') {
@@ -132,10 +122,9 @@ async function readBody(req) {
 
 function openBrowser(url) {
   if (process.env.LIMPEZA_NO_BROWSER === '1') return;
-  spawn('cmd', ['/c', 'start', '', url], { windowsHide: true, detached: true }).unref();
+  platformOpenBrowser(url);
 }
 
-/** True when another TurboSpace instance already answers on this port. */
 function probeExistingInstance(baseUrl) {
   return new Promise((resolve) => {
     const req = http.get(`${baseUrl}/api/status`, { timeout: 2000 }, (res) => {
@@ -160,81 +149,12 @@ function probeExistingInstance(baseUrl) {
   });
 }
 
-const TARGET_IDS = [
-  'userTemp',
-  'winTemp',
-  'prefetch',
-  'recycleBin',
-  'thumbnails',
-  'updateCache',
-  'deliveryOpt',
-  'crashDumps',
-  'browserCache',
-  'shaderCache',
-  'docker',
-  'gradle',
-  'android',
-  'npm',
-  'pip',
-  'desktopJunk',
-];
+function resolveVolumeId(raw) {
+  return normalizeVolume(raw || state.volume || defaultVolumeId());
+}
 
 async function analyzeTargets(targets) {
-  const selected = new Set(targets?.length ? targets : TARGET_IDS);
-  const sizes = {};
-  const p = userPaths();
-
-  if (selected.has('userTemp') || selected.has('winTemp') || selected.has('prefetch')) {
-    logLine('Medindo arquivos temporários...');
-    const t = await measureTempTargets();
-    if (selected.has('userTemp')) sizes.userTemp = t.userTemp;
-    if (selected.has('winTemp')) sizes.winTemp = t.winTemp;
-    if (selected.has('prefetch')) sizes.prefetch = t.prefetch;
-  }
-
-  const extraIds = [
-    'recycleBin',
-    'thumbnails',
-    'updateCache',
-    'deliveryOpt',
-    'crashDumps',
-    'browserCache',
-    'shaderCache',
-  ];
-  if (extraIds.some((id) => selected.has(id))) {
-    logLine('Medindo lixeira, caches e resíduos do sistema...');
-    const extra = await measureWindowsExtras();
-    for (const id of extraIds) {
-      if (selected.has(id)) sizes[id] = extra[id];
-    }
-  }
-
-  if (selected.has('docker')) {
-    logLine('Verificando limpeza de containers...');
-    const has = await commandExists('docker');
-    sizes.docker = has ? null : 0;
-    if (!has) logLine('Ambiente de containers não encontrado');
-  }
-
-  if (selected.has('gradle') || selected.has('android')) {
-    logLine('Medindo caches de desenvolvimento Java/Android...');
-    const g = await measureGradleAndroid();
-    if (selected.has('gradle')) sizes.gradle = g.gradle;
-    if (selected.has('android')) sizes.android = g.android;
-  }
-
-  if (selected.has('npm') || selected.has('pip')) {
-    logLine('Medindo caches de pacotes...');
-    const n = await measureNpmPip();
-    if (selected.has('npm')) sizes.npm = n.npm;
-    if (selected.has('pip')) sizes.pip = n.pip;
-  }
-
-  if (selected.has('desktopJunk')) {
-    logLine(`Medindo resíduos na Área de Trabalho...`);
-    sizes.desktopJunk = await measureDesktopJunk();
-  }
-
+  const sizes = await analyzeSelected(targets, logLine);
   const labeled = {};
   for (const [k, v] of Object.entries(sizes)) {
     labeled[k] = {
@@ -247,48 +167,11 @@ async function analyzeTargets(targets) {
 
 async function runClean({ targets, desktopPaths }) {
   const selected = targets || [];
-  const results = [];
-  const drive = state.drive || 'C:';
-  const freeBefore = await getDriveFreeBytes(drive);
-  logLine(`Espaço livre ${drive} antes: ${formatBytes(freeBefore)}`);
+  const volume = state.volume || defaultVolumeId();
+  const freeBefore = await getDriveFreeBytes(volume);
+  logLine(`Espaço livre ${volume} antes: ${formatBytes(freeBefore)}`);
 
-  const runners = {
-    userTemp: () => cleanUserTemp(logLine),
-    winTemp: () => cleanWinTemp(logLine),
-    prefetch: () => cleanPrefetch(logLine),
-    recycleBin: () => cleanRecycleBin(logLine),
-    thumbnails: () => cleanThumbnails(logLine),
-    updateCache: () => cleanUpdateCache(logLine),
-    deliveryOpt: () => cleanDeliveryOpt(logLine),
-    crashDumps: () => cleanCrashDumps(logLine),
-    browserCache: () => cleanBrowserCache(logLine),
-    shaderCache: () => cleanShaderCache(logLine),
-    docker: () => cleanDocker(logLine),
-    gradle: () => cleanGradle(logLine),
-    android: () => cleanAndroid(logLine),
-    npm: () => cleanNpm(logLine),
-    pip: () => cleanPip(logLine),
-    desktopJunk: () => cleanDesktopJunk(logLine),
-  };
-
-  for (const id of selected) {
-    const fn = runners[id];
-    if (!fn) {
-      logLine(`Alvo desconhecido: ${id}`, 'stderr');
-      continue;
-    }
-    logLine(`—`);
-    logLine(`>>> Iniciando: ${id}`);
-    try {
-      const result = await fn();
-      results.push(result);
-      logLine(`<<< ${result.detail || id} (${result.ok ? 'OK' : 'falha'})`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logLine(`ERRO em ${id}: ${msg}`, 'stderr');
-      results.push({ id, ok: false, freedBytesApprox: 0, detail: msg });
-    }
-  }
+  const results = await cleanSelected(selected, logLine);
 
   if (desktopPaths?.length) {
     logLine('—');
@@ -303,11 +186,11 @@ async function runClean({ targets, desktopPaths }) {
     }
   }
 
-  const freeAfter = await getDriveFreeBytes(drive);
+  const freeAfter = await getDriveFreeBytes(volume);
   const delta = Math.max(0, freeAfter - freeBefore);
   const sumApprox = results.reduce((a, r) => a + (r.freedBytesApprox || 0), 0);
   logLine('—');
-  logLine(`Espaço livre ${drive} depois: ${formatBytes(freeAfter)}`);
+  logLine(`Espaço livre ${volume} depois: ${formatBytes(freeAfter)}`);
   logLine(`Liberados (delta disco): ~${formatBytes(delta)}`);
   logLine(`Soma estimada pelos cleaners: ~${formatBytes(sumApprox)}`);
 
@@ -320,24 +203,24 @@ async function runClean({ targets, desktopPaths }) {
     freeBeforeLabel: formatBytes(freeBefore),
     freeAfterLabel: formatBytes(freeAfter),
     freedDeltaLabel: formatBytes(delta),
-    drive,
+    drive: volume,
+    volume,
   };
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
-  // CORS not needed — same origin
   if (req.method === 'OPTIONS') {
     res.writeHead(204).end();
     return;
   }
 
   if (req.method === 'GET' && url.pathname === '/api/status') {
-    const drive = state.drive || 'C:';
+    const volume = state.volume || defaultVolumeId();
     const [admin, freeBytes, docker, npm, pip, system] = await Promise.all([
       isAdmin(),
-      getDriveFreeBytes(drive),
+      getDriveFreeBytes(volume),
       commandExists('docker'),
       commandExists('npm'),
       commandExists('pip'),
@@ -347,8 +230,12 @@ const server = http.createServer(async (req, res) => {
     res.end(
       JSON.stringify({
         ok: true,
-        ...state,
-        drive,
+        status: state.status,
+        lastMessage: state.lastMessage,
+        busy: state.busy,
+        drive: volume,
+        volume,
+        platform: platformId(),
         admin,
         freeBytes,
         freeLabel: formatBytes(freeBytes),
@@ -361,11 +248,37 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/targets') {
+    const platform = platformId();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(
+      JSON.stringify({
+        ok: true,
+        platform,
+        targetIds: targetIdsFor(platform),
+        groups: groupsFor(platform),
+        targets: targetsFor(platform).map((t) => ({
+          id: t.id,
+          group: t.group,
+          platforms: t.platforms,
+        })),
+      })
+    );
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/drives') {
     try {
       const drives = await listLogicalDrives();
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ ok: true, drives, drive: state.drive }));
+      res.end(
+        JSON.stringify({
+          ok: true,
+          drives,
+          drive: state.volume,
+          volume: state.volume,
+        })
+      );
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: false, error: err.message }));
@@ -382,13 +295,14 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
       return;
     }
-    state.drive = normalizeDrive(body.drive || 'C:');
-    const freeBytes = await getDriveFreeBytes(state.drive);
+    state.volume = resolveVolumeId(body.volume || body.drive);
+    const freeBytes = await getDriveFreeBytes(state.volume);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(
       JSON.stringify({
         ok: true,
-        drive: state.drive,
+        drive: state.volume,
+        volume: state.volume,
         freeBytes,
         freeLabel: formatBytes(freeBytes),
       })
@@ -416,7 +330,7 @@ const server = http.createServer(async (req, res) => {
     });
     res.write('\n');
     sseClients.add(res);
-    sendSse(res, 'status', { ...state });
+    sendSse(res, 'status', { ...state, drive: state.volume, volume: state.volume });
     for (const line of sessionLogs.slice(-200)) {
       sendSse(res, 'log', { line, stream: 'stdout', ts: Date.now() });
     }
@@ -459,16 +373,19 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ ok: true, started: true }));
 
     try {
-      if (body.drive) state.drive = normalizeDrive(body.drive);
+      if (body.volume || body.drive) {
+        state.volume = resolveVolumeId(body.volume || body.drive);
+      }
       const sizes = await analyzeTargets(body.targets);
-      const freeBytes = await getDriveFreeBytes(state.drive);
+      const freeBytes = await getDriveFreeBytes(state.volume);
       logLine('Análise concluída.');
       setStatus('ok', 'Análise concluída');
       broadcast('analyze', {
         sizes,
         freeBytes,
         freeLabel: formatBytes(freeBytes),
-        drive: state.drive,
+        drive: state.volume,
+        volume: state.volume,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -525,7 +442,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // static
   let rel = url.pathname === '/' ? '/index.html' : url.pathname;
   rel = path.normalize(rel).replace(/^(\.\.[/\\])+/, '');
   const filePath = path.join(PUBLIC_DIR, rel);
@@ -566,6 +482,6 @@ server.on('error', async (err) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[TurboSpace] ${url}`);
+  console.log(`[TurboSpace] ${url} (${platformId()})`);
   openBrowser(url);
 });

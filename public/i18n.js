@@ -125,7 +125,7 @@ window.TurboI18n = (function () {
       activity: 'Atividade',
       logLines: '{n} linha{s}',
       clear: 'Limpar',
-      freeSpace: 'Espaço livre no disco {drive}',
+      freeSpace: 'Espaço livre no volume {drive}',
       waiting: 'Aguardando',
       reclaim: 'Espaço a liberar',
       reclaimNote: 'Com base na sua seleção',
@@ -183,30 +183,31 @@ window.TurboI18n = (function () {
       bootModeAnalyzeHint: 'Mede o espaço liberável enquanto o app carrega',
       bootModeOpen: 'Apenas abrir',
       bootModeOpenHint: 'Entra direto na interface, sem analisar agora',
-      bootDriveTitle: 'Escolha a unidade',
-      bootDriveHint: 'Qual HD, SSD ou unidade deseja analisar?',
+      bootDriveTitle: 'Escolha o volume',
+      bootDriveHint: 'Qual disco ou volume deseja analisar?',
       bootDriveFree: '{free} livres de {total}',
       bootBack: 'Voltar',
       bootStart: 'Começar',
       groups: {
-        windows: {
-          title: 'Arquivos temporários do Windows',
-          summary: 'Restos de instalação e arquivos temporários do sistema',
+        temp: {
+          title: 'Arquivos temporários',
+          summary: 'Pastas temporárias do usuário e do sistema',
           items: {
-            userTemp: { label: 'Temporários do seu usuário', hint: 'Arquivos temporários da sua conta' },
+            userTemp: { label: 'Temporários do seu usuário', hint: 'Arquivos temporários da sua conta ($TMPDIR / TEMP)' },
             winTemp: { label: 'Temporários do Windows', hint: 'Pasta de arquivos temporários do sistema' },
             prefetch: { label: 'Cache de abertura de programas', hint: 'Dados usados para abrir apps mais rápido' },
           },
         },
         system: {
           title: 'Limpeza do sistema',
-          summary: 'Lixeira, miniaturas, atualizações e caches seguros',
+          summary: 'Lixeira, caches seguros e relatórios',
           items: {
             recycleBin: { label: 'Lixeira', hint: 'Esvazia itens já excluídos que ainda ocupam espaço' },
+            trash: { label: 'Lixeira', hint: 'Esvazia a Lixeira do macOS (~/.Trash)' },
             thumbnails: { label: 'Cache de miniaturas', hint: 'Miniaturas de pastas e fotos; são recriadas sozinhas' },
             updateCache: { label: 'Downloads de atualizações', hint: 'Pacotes antigos de atualização do Windows' },
             deliveryOpt: { label: 'Cache de atualizações em rede', hint: 'Arquivos usados para compartilhar updates na rede' },
-            crashDumps: { label: 'Relatórios de falhas', hint: 'Logs e dumps de erros do Windows' },
+            crashDumps: { label: 'Relatórios de falhas', hint: 'Logs, dumps e DiagnosticReports antigos' },
             browserCache: {
               label: 'Cache de navegadores',
               hint: 'Chrome, Edge, Brave e Firefox (sites podem carregar um pouco mais lento depois)',
@@ -215,12 +216,17 @@ window.TurboI18n = (function () {
               label: 'Cache de gráficos/jogos',
               hint: 'Shaders do DirectX; jogos recriam na próxima execução',
             },
+            appCaches: {
+              label: 'Caches de apps',
+              hint: 'Whitelist em ~/Library/Caches (Spotify, Slack, Discord, Zoom, Teams, VS Code, Xcode)',
+            },
           },
         },
         dev: {
           title: 'Ferramentas de desenvolvimento',
           summary: 'Caches de programação que podem ser regenerados',
           items: {
+            xcodeDerivedData: { label: 'Xcode DerivedData', hint: 'Dados intermediários de builds do Xcode' },
             gradle: { label: 'Cache de compilação Java', hint: 'Arquivos de build que podem ser baixados de novo' },
             android: { label: 'Cache do Android Studio', hint: 'Caches do SDK Android' },
             npm: { label: 'Cache de pacotes JavaScript', hint: 'Cache do gerenciador de pacotes Node' },
@@ -255,7 +261,7 @@ window.TurboI18n = (function () {
       activity: 'Activity',
       logLines: '{n} line{s}',
       clear: 'Clear',
-      freeSpace: 'Free space on drive {drive}',
+      freeSpace: 'Free space on volume {drive}',
       waiting: 'Waiting',
       reclaim: 'Space to free',
       reclaimNote: 'Based on your selection',
@@ -313,30 +319,31 @@ window.TurboI18n = (function () {
       bootModeAnalyzeHint: 'Measures reclaimable space while the app loads',
       bootModeOpen: 'Just open',
       bootModeOpenHint: 'Go straight to the interface without analyzing now',
-      bootDriveTitle: 'Choose a drive',
-      bootDriveHint: 'Which HDD, SSD, or drive do you want to analyze?',
+      bootDriveTitle: 'Choose a volume',
+      bootDriveHint: 'Which disk or volume do you want to analyze?',
       bootDriveFree: '{free} free of {total}',
       bootBack: 'Back',
       bootStart: 'Start',
       groups: {
-        windows: {
-          title: 'Windows temporary files',
-          summary: 'Install leftovers and system temporary files',
+        temp: {
+          title: 'Temporary files',
+          summary: 'User and system temporary folders',
           items: {
-            userTemp: { label: 'Your user temp files', hint: 'Temporary files from your account' },
+            userTemp: { label: 'Your user temp files', hint: 'Temporary files from your account ($TMPDIR / TEMP)' },
             winTemp: { label: 'Windows temp files', hint: 'System temporary files folder' },
             prefetch: { label: 'App launch cache', hint: 'Data used to open apps faster' },
           },
         },
         system: {
           title: 'System cleanup',
-          summary: 'Recycle Bin, thumbnails, updates and safe caches',
+          summary: 'Trash, safe caches and reports',
           items: {
             recycleBin: { label: 'Recycle Bin', hint: 'Empties already deleted items that still use space' },
+            trash: { label: 'Trash', hint: 'Empties the macOS Trash (~/.Trash)' },
             thumbnails: { label: 'Thumbnail cache', hint: 'Folder and photo thumbnails; recreated automatically' },
             updateCache: { label: 'Update downloads', hint: 'Old Windows update packages' },
             deliveryOpt: { label: 'Delivery Optimization cache', hint: 'Files used to share updates on the network' },
-            crashDumps: { label: 'Crash reports', hint: 'Windows error logs and dumps' },
+            crashDumps: { label: 'Crash reports', hint: 'Logs, dumps and old DiagnosticReports' },
             browserCache: {
               label: 'Browser cache',
               hint: 'Chrome, Edge, Brave and Firefox (sites may load a bit slower afterward)',
@@ -345,12 +352,17 @@ window.TurboI18n = (function () {
               label: 'Graphics/game cache',
               hint: 'DirectX shaders; games recreate them next launch',
             },
+            appCaches: {
+              label: 'App caches',
+              hint: 'Allowlisted ~/Library/Caches (Spotify, Slack, Discord, Zoom, Teams, VS Code, Xcode)',
+            },
           },
         },
         dev: {
           title: 'Developer tools',
           summary: 'Programming caches that can be regenerated',
           items: {
+            xcodeDerivedData: { label: 'Xcode DerivedData', hint: 'Intermediate Xcode build data' },
             gradle: { label: 'Java build cache', hint: 'Build files that can be downloaded again' },
             android: { label: 'Android Studio cache', hint: 'Android SDK caches' },
             npm: { label: 'JavaScript package cache', hint: 'Node package manager cache' },
@@ -370,13 +382,28 @@ window.TurboI18n = (function () {
   };
 
   const GROUP_META = [
-    { id: 'windows', open: true, items: ['userTemp', 'winTemp', 'prefetch'] },
+    { id: 'temp', open: true, items: ['userTemp', 'winTemp', 'prefetch'] },
     {
       id: 'system',
       open: false,
-      items: ['recycleBin', 'thumbnails', 'updateCache', 'deliveryOpt', 'crashDumps', 'browserCache', 'shaderCache'],
+      items: [
+        'recycleBin',
+        'trash',
+        'thumbnails',
+        'updateCache',
+        'deliveryOpt',
+        'crashDumps',
+        'browserCache',
+        'shaderCache',
+        'appCaches',
+      ],
     },
-    { id: 'dev', open: false, items: ['gradle', 'android', 'npm', 'pip', 'docker'], warn: { docker: true } },
+    {
+      id: 'dev',
+      open: false,
+      items: ['xcodeDerivedData', 'gradle', 'android', 'npm', 'pip', 'docker'],
+      warn: { docker: true },
+    },
     { id: 'desktop', open: false, items: ['desktopJunk'], largeFiles: true },
   ];
 
@@ -416,26 +443,36 @@ window.TurboI18n = (function () {
     };
   }
 
-  function buildGroups() {
+  /**
+   * @param {string[]|null} allowedIds — se informado, filtra itens (ex.: resposta de /api/targets)
+   */
+  function buildGroups(allowedIds = null) {
     const locale = getLocale();
     const g = STRINGS[locale].groups;
+    const allow = allowedIds ? new Set(allowedIds) : null;
     return GROUP_META.map((meta) => {
       const src = g[meta.id];
+      if (!src) return null;
+      const items = meta.items
+        .filter((id) => !allow || allow.has(id))
+        .filter((id) => src.items[id])
+        .map((id) => ({
+          id,
+          label: src.items[id].label,
+          hint: src.items[id].hint,
+          safe: id !== 'docker',
+          warn: !!(meta.warn && meta.warn[id]),
+        }));
+      if (!items.length) return null;
       return {
         id: meta.id,
         title: src.title,
         summary: src.summary,
         open: meta.open,
         largeFiles: !!meta.largeFiles,
-        items: meta.items.map((id) => ({
-          id,
-          label: src.items[id].label,
-          hint: src.items[id].hint,
-          safe: id !== 'docker',
-          warn: !!(meta.warn && meta.warn[id]),
-        })),
+        items,
       };
-    });
+    }).filter(Boolean);
   }
 
   function shouldAskLanguage() {

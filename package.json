@@ -7,7 +7,9 @@
   "scripts": {
     "start": "electron .",
     "server": "node index.mjs",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win portable",
+    "dist:win": "electron-builder --win portable",
+    "dist:mac": "electron-builder --mac"
   },
   "license": "MIT",
   "author": "Dizodias Digital Engineering <https://dizodias.com>",
@@ -41,7 +43,27 @@
       "artifactName": "TurboSpace-Portatil.exe",
       "requestExecutionLevel": "admin",
       "unicode": true
-    }
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "artifactName": "TurboSpace-${version}-${arch}.${ext}"
+    },
+    "afterSign": "scripts/notarize.cjs"
   },
   "devDependencies": {
     "electron": "^43.2.0",

@@ -6,14 +6,14 @@ const { spawn } = require('node:child_process');
 const PORT = Number(process.env.PORT || 3860);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const ROOT = path.join(__dirname, '..');
+const isDarwin = process.platform === 'darwin';
+const isWin = process.platform === 'win32';
 
 let serverProcess = null;
 let mainWindow = null;
 let serverExitInfo = null;
 
 function startServer() {
-  // ELECTRON_RUN_AS_NODE reaproveita o Node embutido no Electron,
-  // então o app funciona mesmo sem Node.js instalado no sistema.
   serverProcess = spawn(process.execPath, [path.join(ROOT, 'index.mjs')], {
     cwd: ROOT,
     env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', LIMPEZA_NO_BROWSER: '1' },
@@ -34,10 +34,17 @@ function stopServer() {
   const proc = serverProcess;
   serverProcess = null;
   try {
-    if (process.platform === 'win32') {
+    if (isWin) {
       spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t'], { windowsHide: true });
     } else {
-      proc.kill();
+      proc.kill('SIGTERM');
+      setTimeout(() => {
+        try {
+          proc.kill('SIGKILL');
+        } catch {
+          // already dead
+        }
+      }, 2000);
     }
   } catch {
     // já encerrado
@@ -62,7 +69,6 @@ async function waitForServer({ timeoutMs = 20000, intervalMs = 250 } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (await pingServer()) return true;
-    // O servidor sai com código 0 quando outra instância já responde na porta.
     if (serverExitInfo && serverExitInfo.code !== 0) return false;
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -75,7 +81,12 @@ function emitMaximized() {
 }
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  const iconPath = isWin
+    ? path.join(ROOT, 'build', 'icon.ico')
+    : path.join(ROOT, 'build', 'icon.png');
+
+  /** @type {import('electron').BrowserWindowConstructorOptions} */
+  const opts = {
     width: 480,
     height: 560,
     minWidth: 440,
@@ -83,23 +94,26 @@ function createWindow() {
     show: false,
     frame: false,
     thickFrame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    hasShadow: false,
+    transparent: !isDarwin,
+    backgroundColor: isDarwin ? '#F5F5F7' : '#00000000',
+    hasShadow: isDarwin,
     resizable: false,
     maximizable: true,
     fullscreenable: true,
-    titleBarStyle: 'hidden',
+    titleBarStyle: isDarwin ? 'hiddenInset' : 'hidden',
+    trafficLightPosition: isDarwin ? { x: 16, y: 14 } : undefined,
     autoHideMenuBar: true,
     title: 'TurboSpace',
-    icon: path.join(ROOT, 'build', 'icon.ico'),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: false,
     },
-  });
+  };
+
+  mainWindow = new BrowserWindow(opts);
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('closed', () => {
@@ -165,7 +179,7 @@ ipcMain.handle('window:isMaximized', () => {
 
 ipcMain.handle('window:setBootMode', (_event, enabled) => {
   if (!mainWindow || mainWindow.isDestroyed()) return false;
-  if (process.platform === 'win32') {
+  if (isWin) {
     try {
       mainWindow.setBackgroundMaterial('none');
     } catch {
@@ -173,7 +187,7 @@ ipcMain.handle('window:setBootMode', (_event, enabled) => {
     }
   }
   try {
-    mainWindow.setBackgroundColor('#00000000');
+    mainWindow.setBackgroundColor(isDarwin ? '#F5F5F7' : '#00000000');
   } catch {
     // ignore
   }
@@ -208,7 +222,29 @@ if (!gotLock) {
   });
 
   app.whenReady().then(async () => {
-    Menu.setApplicationMenu(null);
+    if (isDarwin) {
+      Menu.setApplicationMenu(
+        Menu.buildFromTemplate([
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' },
+              { type: 'separator' },
+              { role: 'hide' },
+              { role: 'hideOthers' },
+              { role: 'unhide' },
+              { type: 'separator' },
+              { role: 'quit' },
+            ],
+          },
+          { role: 'editMenu' },
+          { role: 'windowMenu' },
+        ])
+      );
+    } else {
+      Menu.setApplicationMenu(null);
+    }
+
     startServer();
 
     const ready = await waitForServer();
@@ -228,7 +264,13 @@ if (!gotLock) {
 
   app.on('window-all-closed', () => {
     stopServer();
-    app.quit();
+    if (!isDarwin) app.quit();
+  });
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0 && !mainWindow) {
+      createWindow();
+    }
   });
 
   app.on('before-quit', stopServer);

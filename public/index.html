@@ -125,6 +125,10 @@
       user-select: none;
       flex-shrink: 0;
     }
+    body.is-darwin #titlebar,
+    #titlebar.darwin {
+      padding-left: 78px;
+    }
     #titlebar .no-drag { -webkit-app-region: no-drag; app-region: no-drag; }
     .win-btn {
       width: 46px; height: 40px; border: 0; background: transparent; color: var(--text);
@@ -716,11 +720,11 @@
 
   <div id="appShell">
     <header id="titlebar">
-      <div class="brand-lockup min-w-0">
+      <div class="brand-lockup min-w-0" style="padding-left: 0">
         <img class="js-turbo-logo" src="/logo-turbo.svg" alt="" width="22" height="20" />
         <span class="brand-name truncate">TurboSpace</span>
       </div>
-      <div class="flex items-center no-drag">
+      <div class="flex items-center no-drag" id="winControls">
         <button type="button" class="win-btn" id="btnWinMin" title="Minimizar" aria-label="Minimizar" data-i18n-title="winMin" data-i18n-aria="winMin">
           <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1 5h8" stroke="currentColor" stroke-width="1.2"/></svg>
         </button>
@@ -905,8 +909,14 @@
     })();
 
     const I18n = window.TurboI18n;
+    let platform = 'win32';
+    let allowedTargetIds = null;
     let GROUPS = I18n.buildGroups();
     let TARGETS = GROUPS.flatMap((g) => g.items);
+    let volumeLabel = 'C:';
+    let selectedVolume = 'C:';
+    /** @deprecated alias */
+    let selectedDrive = selectedVolume;
 
     const els = {
       accordion: document.getElementById('accordion'),
@@ -949,12 +959,47 @@
     let largeFilesEl = null;
     let lastSystem = null;
     let lastStatusKey = 'idle';
-    let selectedDrive = 'C:';
     let bootMode = 'analyze';
     let analyzeDone = true;
     let splashDone = false;
     let pendingAnalyzeSizes = null;
     let bootAnalyzeRequested = false;
+
+    function syncVolumeAliases() {
+      selectedDrive = selectedVolume;
+    }
+
+    function volumeDisplay() {
+      return volumeLabel || selectedVolume;
+    }
+
+    async function loadPlatformTargets() {
+      try {
+        const [statusRes, targetsRes] = await Promise.all([fetch('/api/status'), fetch('/api/targets')]);
+        const status = await statusRes.json();
+        const targets = await targetsRes.json();
+        if (status.platform) platform = status.platform;
+        if (window.turboWindow?.platform) platform = window.turboWindow.platform;
+        if (targets.targetIds) allowedTargetIds = targets.targetIds;
+        if (status.volume || status.drive) {
+          selectedVolume = status.volume || status.drive;
+          syncVolumeAliases();
+        }
+        document.body.classList.toggle('is-darwin', platform === 'darwin');
+        const winControls = document.getElementById('winControls');
+        if (winControls && platform === 'darwin') winControls.style.display = 'none';
+        const titlebar = document.getElementById('titlebar');
+        if (titlebar && platform === 'darwin') titlebar.classList.add('darwin');
+      } catch {
+        // fallback: windows groups
+      }
+      rebuildGroups();
+    }
+
+    function rebuildGroups() {
+      GROUPS = I18n.buildGroups(allowedTargetIds);
+      TARGETS = GROUPS.flatMap((g) => g.items);
+    }
 
     function t(key, vars) {
       return I18n.t(key, vars);
@@ -984,7 +1029,7 @@
       els.btnSelectAll.textContent = t('selectSafe');
       document.getElementById('activityTitle').textContent = t('activity');
       els.btnClearLog.textContent = t('clear');
-      document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: selectedDrive });
+      document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: volumeDisplay() });
       document.getElementById('lblReclaim').textContent = t('reclaim');
       document.getElementById('step1Line').innerHTML = `${t('step1')} <strong style="color:var(--text)">${t('step1Strong')}</strong>`;
       document.getElementById('step2Line').textContent = t('step2');
@@ -1136,7 +1181,8 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            drive: selectedDrive,
+            volume: selectedVolume,
+            drive: selectedVolume,
             targets: TARGETS.map((tgt) => tgt.id),
           }),
         }).catch(() => {
@@ -1154,22 +1200,42 @@
         const data = await res.json();
         const drives = data.drives || [];
         if (!drives.length) {
-          drives.push({ letter: 'C:', kind: 'Disco', name: '', freeLabel: '—', totalLabel: '—' });
+          const fallbackId = platform === 'darwin' ? '/' : 'C:';
+          drives.push({
+            id: fallbackId,
+            letter: fallbackId,
+            label: platform === 'darwin' ? 'Macintosh HD' : 'C:',
+            kind: 'Disk',
+            name: '',
+            freeLabel: '—',
+            totalLabel: '—',
+          });
         }
         list.innerHTML = '';
-        if (!drives.some((d) => d.letter === selectedDrive)) selectedDrive = drives[0].letter;
+        const ids = drives.map((d) => d.id || d.letter);
+        if (!ids.includes(selectedVolume)) {
+          selectedVolume = drives[0].id || drives[0].letter;
+          volumeLabel = drives[0].label || selectedVolume;
+          syncVolumeAliases();
+        }
         for (const d of drives) {
+          const id = d.id || d.letter;
+          const label = d.label || d.name || id;
           const btn = document.createElement('button');
           btn.type = 'button';
-          btn.className = 'boot-option' + (d.letter === selectedDrive ? ' selected' : '');
-          btn.dataset.drive = d.letter;
-          const title = `${d.letter} · ${d.kind}${d.name ? ` — ${d.name}` : ''}`;
+          btn.className = 'boot-option' + (id === selectedVolume ? ' selected' : '');
+          btn.dataset.drive = id;
+          const title = `${label} · ${d.kind || 'Disk'}`;
           btn.innerHTML = `<strong></strong><span></span>`;
           btn.querySelector('strong').textContent = title;
           btn.querySelector('span').textContent = t('bootDriveFree', { free: d.freeLabel, total: d.totalLabel });
           btn.addEventListener('click', () => {
-            selectedDrive = d.letter;
-            list.querySelectorAll('.boot-option').forEach((el) => el.classList.toggle('selected', el.dataset.drive === selectedDrive));
+            selectedVolume = id;
+            volumeLabel = label;
+            syncVolumeAliases();
+            list.querySelectorAll('.boot-option').forEach((el) =>
+              el.classList.toggle('selected', el.dataset.drive === selectedVolume)
+            );
           });
           list.appendChild(btn);
         }
@@ -1183,13 +1249,12 @@
         await fetch('/api/drive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ drive: selectedDrive }),
+          body: JSON.stringify({ volume: selectedVolume, drive: selectedVolume }),
         });
       } catch {
         // segue mesmo assim
       }
-      GROUPS = I18n.buildGroups();
-      TARGETS = GROUPS.flatMap((g) => g.items);
+      rebuildGroups();
       applyStaticI18n();
       renderAccordion();
       syncCleanButton();
@@ -1234,7 +1299,9 @@
 
       document.getElementById('bootModeContinue').addEventListener('click', async () => {
         if (bootMode === 'open') {
-          selectedDrive = 'C:';
+          selectedVolume = platform === 'darwin' ? '/' : 'C:';
+          volumeLabel = platform === 'darwin' ? 'Macintosh HD' : 'C:';
+          syncVolumeAliases();
           await commitDriveAndStart(false);
           return;
         }
@@ -1281,6 +1348,13 @@
       if (!api) {
         titlebar.style.display = 'none';
         return;
+      }
+
+      if (api.platform === 'darwin' || platform === 'darwin') {
+        const winControls = document.getElementById('winControls');
+        if (winControls) winControls.style.display = 'none';
+        titlebar.classList.add('darwin');
+        document.body.classList.add('is-darwin');
       }
 
       const iconMax = document.getElementById('iconMax');
@@ -1601,8 +1675,12 @@
     async function loadStatus() {
       const res = await fetch('/api/status');
       const data = await res.json();
-      if (data.drive) selectedDrive = data.drive;
-      document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: selectedDrive });
+      if (data.drive || data.volume) {
+        selectedVolume = data.volume || data.drive;
+        volumeLabel = selectedVolume;
+        syncVolumeAliases();
+      }
+      document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: volumeDisplay() });
       els.freeSpace.textContent = data.freeLabel || '—';
       setStatusUI(data.status, data.lastMessage);
       renderSystem(data.system);
@@ -1675,7 +1753,11 @@
       es.addEventListener('analyze', (ev) => {
         try {
           const data = JSON.parse(ev.data);
-          if (data.drive) selectedDrive = data.drive;
+          if (data.drive || data.volume) {
+            selectedVolume = data.volume || data.drive;
+            volumeLabel = selectedVolume;
+            syncVolumeAliases();
+          }
           const splashEl = document.getElementById('splash');
           const duringBoot = bootAnalyzeRequested || splashEl?.classList.contains('active');
           if (duringBoot) {
@@ -1686,7 +1768,7 @@
           } else {
             applySizes(data.sizes);
             if (data.freeLabel) els.freeSpace.textContent = data.freeLabel;
-            document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: selectedDrive });
+            document.getElementById('lblFreeSpace').textContent = t('freeSpace', { drive: volumeDisplay() });
           }
         } catch { /* ignore */ }
       });
@@ -1714,7 +1796,11 @@
       await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drive: selectedDrive, targets: TARGETS.map((tgt) => tgt.id) }),
+        body: JSON.stringify({
+          volume: selectedVolume,
+          drive: selectedVolume,
+          targets: TARGETS.map((tgt) => tgt.id),
+        }),
       });
     }
 
@@ -1773,7 +1859,7 @@
     });
 
     connectSse();
-    startBootFlow();
+    loadPlatformTargets().finally(() => startBootFlow());
   </script>
 </body>
 </html>

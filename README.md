@@ -1,6 +1,6 @@
 # TurboSpace
 
-> Desktop cleaner for Windows — TEMP, Prefetch, Docker, Gradle/Android, npm/pip, browser caches, and more.
+> Desktop cleaner for **Windows** and **macOS** — temp files, caches, Docker, Gradle/Android, npm/pip, and more.
 
 **Author:** [Dizodias Digital Engineering](https://dizodias.com)
 
@@ -10,21 +10,31 @@
 
 ## Features
 
-- Clean user `%TEMP%`, `C:\Windows\Temp`, and Prefetch
+### Shared
+- User temp cleanup (`%TEMP%` / `$TMPDIR`)
 - Docker prune (`docker system prune -af`, volumes kept)
 - Gradle and Android SDK caches (AVDs are not removed)
 - npm and pip cache cleanup
 - Desktop junk (`.tmp`, `.log`, `.bak`, `.old`) and large-file selection
-- Extra Windows targets: Recycle Bin, thumbnails, browser cache, crash dumps, Delivery Optimization, shader cache, Windows Update cache
-- Native Electron window (no browser required)
+- Browser cache cleanup
+- Native Electron window
+
+### Windows
+- `C:\Windows\Temp`, Prefetch, Recycle Bin, thumbnails, Delivery Optimization, Windows Update cache, DirectX shader cache, crash dumps
 - Portable `.exe` with Administrator elevation
+
+### macOS
+- Trash (`~/.Trash`), allowlisted `~/Library/Caches`, DiagnosticReports (>7 days), Xcode DerivedData
+- DMG / ZIP packaging (optional Apple notarization)
 
 ## Requirements
 
 | Mode | Requirements |
 |------|----------------|
-| Development | Windows 10/11 (x64), [Node.js](https://nodejs.org/) 18+, Administrator privileges |
-| Portable | Windows 10/11 (x64) only — no Node.js install needed |
+| Development (Windows) | Windows 10/11 (x64), [Node.js](https://nodejs.org/) 18+, Administrator recommended |
+| Development (macOS) | macOS 12+, Node.js 18+ |
+| Portable Windows | Windows 10/11 (x64) — no Node.js install needed |
+| macOS build | macOS host to run `npm run dist:mac` |
 
 ## Quick start (development)
 
@@ -33,21 +43,17 @@ npm install
 npm start
 ```
 
-Or double-click `Iniciar.bat` (requests Administrator and launches Electron from source).
+- **Windows:** double-click `Iniciar.bat` (requests Administrator).
+- **macOS:** double-click `Iniciar.command` (or `chmod +x Iniciar.command` once, then open).
 
-A short splash screen appears, then the main UI with Analyze / Clean actions.
-
-## Portable build
+## Builds
 
 ```bash
-npm run dist
+npm run dist:win   # → dist/TurboSpace-Portatil.exe
+npm run dist:mac   # → dist/*.dmg and *.zip (must run on macOS)
 ```
 
-Output: `dist/TurboSpace-Portatil.exe`
-
-1. Run the executable and accept the UAC prompt.
-2. Click **Analyze**, select targets, then **Clean selected**.
-3. Copy the `.exe` anywhere (USB drive, another PC) — it is self-contained.
+Notarization (optional): set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` before `dist:mac`.
 
 ## Server-only mode (no window)
 
@@ -55,57 +61,47 @@ Output: `dist/TurboSpace-Portatil.exe`
 npm run server
 ```
 
-Open `http://127.0.0.1:3860`. Change port with:
-
-```bash
-set PORT=3861
-```
+Open `http://127.0.0.1:3860`. Change port with `PORT=3861`.
 
 ## Project structure
 
 ```
 TurboSpace/
-├── build/           # App icons (icon.ico / icon.png)
-├── cleaners/        # Cleanup routines (TEMP, Docker, npm, etc.)
-├── electron/        # Electron main + preload
-├── public/          # UI (HTML, i18n, assets, Tailwind)
-├── index.mjs        # Local HTTP API (default port 3860)
-├── Iniciar.bat      # Dev launcher (elevated)
-├── package.json
-└── README.md
+├── build/                 # Icons + macOS entitlements
+├── cleaners/
+│   ├── platform/          # win32 / darwin paths, drives, privilege, system
+│   ├── targets/           # Cleanup catalog + registry
+│   └── measure.mjs        # Shared FS helpers
+├── electron/              # Electron main + preload
+├── public/                # UI (HTML, i18n, assets)
+├── scripts/notarize.cjs   # Optional afterSign notarization
+├── index.mjs              # Local HTTP API (port 3860)
+├── Iniciar.bat / Iniciar.command
+└── package.json
 ```
-
-| Piece | Path |
-|-------|------|
-| App window | `electron/main.cjs` |
-| Local HTTP server | `index.mjs` |
-| UI | `public/index.html` |
-| Cleanup modules | `cleaners/*.mjs` |
-| Packaging icons | `build/icon.ico` |
-
-`electron/main.cjs` starts the server as a child process, waits until the port responds, then shows the window. Closing the window stops the server.
 
 ## Cleanup targets
 
-| Target | Action |
-|--------|--------|
-| User TEMP | Empties `%TEMP%` |
-| Windows Temp | Empties `C:\Windows\Temp` |
-| Prefetch | Empties `C:\Windows\Prefetch` |
-| Docker | `docker system prune -af` (no volumes) |
-| Gradle | Removes `%USERPROFILE%\.gradle\caches` |
-| Android | Clears SDK caches (keeps AVDs) |
-| npm / pip | Clears tool caches |
-| Desktop | Removes junk extensions + optional large files |
-| Windows extras | Recycle Bin, thumbnails, browser/shader/update caches, etc. |
+| Target | Windows | macOS |
+|--------|---------|-------|
+| User temp | yes | yes |
+| Windows Temp / Prefetch | yes | — |
+| Recycle Bin / Trash | Recycle Bin | Trash |
+| Browser cache | yes | yes |
+| App caches (allowlist) | — | yes |
+| Crash / Diagnostic reports | yes | yes (>7d) |
+| Xcode DerivedData | — | yes |
+| Docker / Gradle / Android / npm / pip | yes | yes |
+| Desktop junk | yes | yes |
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm start` | Run Electron app |
+| `npm start` | Electron app |
 | `npm run server` | HTTP server only |
-| `npm run dist` | Build portable Windows executable |
+| `npm run dist` / `dist:win` | Windows portable exe |
+| `npm run dist:mac` | macOS DMG + ZIP |
 
 ## License
 
