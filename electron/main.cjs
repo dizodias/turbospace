@@ -94,14 +94,18 @@ function createWindow() {
     show: false,
     frame: false,
     thickFrame: false,
-    transparent: !isDarwin,
-    backgroundColor: isDarwin ? '#F5F5F7' : '#00000000',
-    hasShadow: isDarwin,
+    // Transparent + native materials so CSS glass (≈90% opacity) can show through.
+    transparent: true,
+    backgroundColor: '#00000000',
+    hasShadow: true,
+    roundedCorners: true,
     resizable: false,
     maximizable: true,
     fullscreenable: true,
     titleBarStyle: isDarwin ? 'hiddenInset' : 'hidden',
     trafficLightPosition: isDarwin ? { x: 16, y: 14 } : undefined,
+    vibrancy: isDarwin ? 'under-window' : undefined,
+    visualEffectState: isDarwin ? 'active' : undefined,
     autoHideMenuBar: true,
     title: 'TurboSpace',
     icon: iconPath,
@@ -179,17 +183,17 @@ ipcMain.handle('window:isMaximized', () => {
 
 ipcMain.handle('window:setBootMode', (_event, enabled) => {
   if (!mainWindow || mainWindow.isDestroyed()) return false;
-  if (isWin) {
+  try {
+    mainWindow.setBackgroundColor('#00000000');
+  } catch {
+    // ignore
+  }
+  if (isDarwin) {
     try {
-      mainWindow.setBackgroundMaterial('none');
+      mainWindow.setVibrancy('under-window');
     } catch {
       // ignore
     }
-  }
-  try {
-    mainWindow.setBackgroundColor(isDarwin ? '#F5F5F7' : '#00000000');
-  } catch {
-    // ignore
   }
   if (enabled) {
     mainWindow.setResizable(false);

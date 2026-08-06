@@ -28,10 +28,10 @@
   </script>
   <style>
     :root, [data-theme="light"] {
-      --bg: #f5f5f7;
-      --bg-elevated: #ffffff;
-      --bg-soft: #fbfbfd;
-      --bg-console: #f0f0f2;
+      --bg: rgba(245, 245, 247, 0.9);
+      --bg-elevated: rgba(255, 255, 255, 0.9);
+      --bg-soft: rgba(251, 251, 253, 0.88);
+      --bg-console: rgba(240, 240, 242, 0.9);
       --border: rgba(0, 0, 0, 0.08);
       --border-strong: rgba(0, 0, 0, 0.12);
       --text: #1d1d1f;
@@ -45,16 +45,20 @@
       --warn-soft: rgba(255, 159, 10, 0.14);
       --danger: #ff3b30;
       --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      --titlebar: rgba(245, 245, 247, 0.9);
-      --splash-bg: #f5f5f7;
+      --titlebar: rgba(245, 245, 247, 0.82);
+      --splash-bg: rgba(245, 245, 247, 0.9);
+      --glass-fill: rgba(255, 255, 255, 0.9);
+      --glass-stroke: rgba(255, 255, 255, 0.45);
+      --glass-highlight: rgba(255, 255, 255, 0.55);
       --win-btn-hover: rgba(0, 0, 0, 0.06);
       --win-close-hover: #e81123;
+      --window-radius: 18px;
     }
     [data-theme="dark"] {
-      --bg: #000000;
-      --bg-elevated: #1c1c1e;
-      --bg-soft: #2c2c2e;
-      --bg-console: #0a0a0a;
+      --bg: rgba(0, 0, 0, 0.9);
+      --bg-elevated: rgba(28, 28, 30, 0.9);
+      --bg-soft: rgba(44, 44, 46, 0.88);
+      --bg-console: rgba(10, 10, 10, 0.9);
       --border: rgba(255, 255, 255, 0.1);
       --border-strong: rgba(255, 255, 255, 0.16);
       --text: #f5f5f7;
@@ -68,10 +72,14 @@
       --warn-soft: rgba(255, 214, 10, 0.14);
       --danger: #ff453a;
       --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      --titlebar: rgba(28, 28, 30, 0.92);
-      --splash-bg: #000000;
+      --titlebar: rgba(28, 28, 30, 0.78);
+      --splash-bg: rgba(0, 0, 0, 0.9);
+      --glass-fill: rgba(28, 28, 30, 0.9);
+      --glass-stroke: rgba(255, 255, 255, 0.14);
+      --glass-highlight: rgba(255, 255, 255, 0.1);
       --win-btn-hover: rgba(255, 255, 255, 0.08);
       --win-close-hover: #e81123;
+      --window-radius: 18px;
     }
 
     *, *::before, *::after { box-sizing: border-box; }
@@ -83,14 +91,20 @@
       user-select: none;
       -webkit-user-select: none;
       -webkit-user-drag: none;
+      background: transparent;
+    }
+    html {
+      border-radius: var(--window-radius);
     }
     body {
       color: var(--text);
       background: transparent;
-      transition: background 0.25s ease, color 0.25s ease;
+      border-radius: var(--window-radius);
+      transition: color 0.25s ease;
     }
+    /* Keep the native/vibrancy layer visible (10% transparency). */
     body.app-ready {
-      background: var(--bg);
+      background: transparent;
     }
     input, textarea, [contenteditable="true"] {
       user-select: none;
@@ -120,7 +134,8 @@
       justify-content: space-between;
       padding: 0 0 0 14px;
       background: var(--titlebar);
-      backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(28px);
+      -webkit-backdrop-filter: saturate(180%) blur(28px);
       border-bottom: 1px solid var(--border);
       user-select: none;
       flex-shrink: 0;
@@ -194,6 +209,8 @@
       -webkit-backdrop-filter: none !important;
       box-shadow: none;
       border: 0;
+      border-radius: var(--window-radius);
+      overflow: hidden;
       transition: opacity 0.35s ease;
       -webkit-app-region: drag;
     }
@@ -207,13 +224,15 @@
       height: 100%;
       max-height: 100%;
       box-sizing: border-box;
-      border-radius: 28px;
+      /* Match native window corners — CSS border on a different radius caused jagged edges. */
+      border-radius: var(--window-radius);
       padding: 28px 26px 24px;
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: var(--glass-fill);
+      border: 0;
+      /* Hairline via inset shadow (avoids Chromium border-radius AA artifacts). */
       box-shadow:
-        0 24px 64px rgba(0, 0, 0, 0.35),
-        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+        inset 0 0 0 0.5px var(--glass-stroke),
+        inset 0 1px 0 var(--glass-highlight);
       backdrop-filter: blur(40px) saturate(180%);
       -webkit-backdrop-filter: blur(40px) saturate(180%);
       display: flex;
@@ -223,13 +242,15 @@
       gap: 1.1rem;
       -webkit-app-region: no-drag;
       overflow: auto;
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
     [data-theme="dark"] .glass-panel {
-      background: rgba(28, 28, 30, 0.96);
-      border-color: rgba(255, 255, 255, 0.12);
+      background: var(--glass-fill);
       box-shadow:
-        0 24px 64px rgba(0, 0, 0, 0.55),
-        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        inset 0 0 0 0.5px var(--glass-stroke),
+        inset 0 1px 0 var(--glass-highlight);
       backdrop-filter: blur(40px) saturate(170%);
       -webkit-backdrop-filter: blur(40px) saturate(170%);
     }
@@ -376,11 +397,31 @@
       flex-direction: column;
       overflow: hidden;
       background: var(--bg);
-      border-radius: 0;
+      backdrop-filter: blur(36px) saturate(180%);
+      -webkit-backdrop-filter: blur(36px) saturate(180%);
+      border-radius: var(--window-radius);
+      box-shadow: inset 0 0 0 0.5px var(--glass-stroke);
+      transform: translateZ(0);
     }
     #appShell.ready {
       display: flex;
       visibility: visible;
+    }
+    html:has(body.is-maximized),
+    html:has(body.is-fullscreen),
+    body.is-maximized,
+    body.is-fullscreen,
+    body.is-maximized #appShell,
+    body.is-fullscreen #appShell,
+    body.is-maximized .glass-shell,
+    body.is-fullscreen .glass-shell,
+    body.is-maximized .glass-panel,
+    body.is-fullscreen .glass-panel {
+      border-radius: 0;
+    }
+    body.is-maximized #appShell,
+    body.is-fullscreen #appShell {
+      box-shadow: none;
     }
 
     #appRoot {
@@ -909,12 +950,13 @@
     })();
 
     const I18n = window.TurboI18n;
-    let platform = 'win32';
+    let platform = window.turboWindow?.platform === 'darwin' ? 'darwin' : 'win32';
+    I18n.setPlatform(platform);
     let allowedTargetIds = null;
     let GROUPS = I18n.buildGroups();
     let TARGETS = GROUPS.flatMap((g) => g.items);
-    let volumeLabel = 'C:';
-    let selectedVolume = 'C:';
+    let volumeLabel = platform === 'darwin' ? 'Macintosh HD' : 'C:';
+    let selectedVolume = platform === 'darwin' ? '/' : 'C:';
     /** @deprecated alias */
     let selectedDrive = selectedVolume;
 
@@ -980,6 +1022,7 @@
         const targets = await targetsRes.json();
         if (status.platform) platform = status.platform;
         if (window.turboWindow?.platform) platform = window.turboWindow.platform;
+        I18n.setPlatform(platform);
         if (targets.targetIds) allowedTargetIds = targets.targetIds;
         if (status.volume || status.drive) {
           selectedVolume = status.volume || status.drive;
@@ -992,11 +1035,17 @@
         if (titlebar && platform === 'darwin') titlebar.classList.add('darwin');
       } catch {
         // fallback: windows groups
+        if (window.turboWindow?.platform) {
+          platform = window.turboWindow.platform;
+          I18n.setPlatform(platform);
+        }
       }
       rebuildGroups();
+      applyStaticI18n();
     }
 
     function rebuildGroups() {
+      I18n.setPlatform(platform);
       GROUPS = I18n.buildGroups(allowedTargetIds);
       TARGETS = GROUPS.flatMap((g) => g.items);
     }
@@ -1351,6 +1400,8 @@
       }
 
       if (api.platform === 'darwin' || platform === 'darwin') {
+        platform = 'darwin';
+        I18n.setPlatform('darwin');
         const winControls = document.getElementById('winControls');
         if (winControls) winControls.style.display = 'none';
         titlebar.classList.add('darwin');

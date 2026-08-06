@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { desktopLabel } from '../copy.mjs';
 import { dirSize, formatBytes, userPaths } from '../measure.mjs';
 
 const JUNK_EXTS = new Set(['.tmp', '.log', '.bak', '.old']);
@@ -88,9 +89,10 @@ export async function listLargeDesktopFiles() {
 
 export async function cleanDesktopJunk(onLog) {
   const { desktop } = userPaths();
-  onLog(`Limpando lixo por extensão no Desktop (${[...JUNK_EXTS].join(', ')})`);
+  const desk = desktopLabel();
+  onLog(`Limpando lixo por extensão na ${desk} (${[...JUNK_EXTS].join(', ')})`);
   if (!fs.existsSync(desktop)) {
-    return { id: 'desktopJunk', ok: false, freedBytesApprox: 0, detail: 'Desktop não encontrado' };
+    return { id: 'desktopJunk', ok: false, freedBytesApprox: 0, detail: `${desk} não encontrada` };
   }
   let freed = 0;
   let removed = 0;
@@ -98,7 +100,7 @@ export async function cleanDesktopJunk(onLog) {
   try {
     entries = await fsp.readdir(desktop, { withFileTypes: true });
   } catch (err) {
-    onLog(`Sem acesso ao Desktop: ${err.message}`);
+    onLog(`Sem acesso à ${desk}: ${err.message}`);
     return { id: 'desktopJunk', ok: false, freedBytesApprox: 0, detail: err.message };
   }
   for (const ent of entries) {
@@ -116,7 +118,7 @@ export async function cleanDesktopJunk(onLog) {
       onLog(`Falha em ${ent.name}: ${err.message}`);
     }
   }
-  onLog(`Desktop lixo: ${removed} arquivo(s), ~${formatBytes(freed)}`);
+  onLog(`${desk} (resíduos): ${removed} arquivo(s), ~${formatBytes(freed)}`);
   return {
     id: 'desktopJunk',
     ok: true,
@@ -127,12 +129,13 @@ export async function cleanDesktopJunk(onLog) {
 
 export async function deleteDesktopPaths(paths, onLog) {
   const { desktop } = userPaths();
+  const desk = desktopLabel();
   let freed = 0;
   let removed = 0;
   for (const raw of paths || []) {
     const full = path.resolve(String(raw));
     if (!isUnderDesktop(full, desktop)) {
-      onLog(`Recusado (fora do Desktop): ${full}`);
+      onLog(`Recusado (fora da ${desk}): ${full}`);
       continue;
     }
     if (!fs.existsSync(full)) {

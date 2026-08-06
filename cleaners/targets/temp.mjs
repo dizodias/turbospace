@@ -33,13 +33,17 @@ export async function measurePrefetch() {
 
 export async function cleanUserTemp(onLog) {
   const p = userPaths();
-  onLog(`Limpando TEMP do usuário: ${p.temp}`);
+  const label = process.platform === 'darwin' ? 'temporários do usuário' : 'TEMP do usuário';
+  onLog(`Limpando ${label}: ${p.temp}`);
   const freed = await emptyDirContents(p.temp, onLog);
   return {
     id: 'userTemp',
     ok: true,
     freedBytesApprox: freed,
-    detail: `TEMP usuário ~${formatBytes(freed)}`,
+    detail:
+      process.platform === 'darwin'
+        ? `Temporários ~${formatBytes(freed)}`
+        : `TEMP usuário ~${formatBytes(freed)}`,
   };
 }
 

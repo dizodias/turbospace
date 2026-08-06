@@ -17,6 +17,7 @@ import {
   platformId,
   userPaths,
 } from './cleaners/measure.mjs';
+import { desktopLabel } from './cleaners/copy.mjs';
 import {
   analyzeSelected,
   cleanSelected,
@@ -174,15 +175,16 @@ async function runClean({ targets, desktopPaths }) {
   const results = await cleanSelected(selected, logLine);
 
   if (desktopPaths?.length) {
+    const desk = desktopLabel();
     logLine('—');
-    logLine('>>> Removendo arquivos grandes selecionados no Desktop');
+    logLine(`>>> Removendo arquivos grandes selecionados na ${desk}`);
     try {
       const result = await deleteDesktopPaths(desktopPaths, logLine);
       results.push(result);
       logLine(`<<< ${result.detail}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      logLine(`ERRO Desktop grandes: ${msg}`, 'stderr');
+      logLine(`ERRO arquivos grandes (${desk}): ${msg}`, 'stderr');
     }
   }
 

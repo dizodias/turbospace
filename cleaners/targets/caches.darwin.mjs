@@ -28,7 +28,7 @@ export async function measureAppCaches() {
 }
 
 export async function cleanAppCaches(onLog) {
-  onLog('Limpando caches de apps (whitelist)...');
+  onLog('Limpando caches de apps (lista permitida)...');
   let freed = 0;
   for (const dir of allowlistPaths()) {
     if (!fs.existsSync(dir)) continue;

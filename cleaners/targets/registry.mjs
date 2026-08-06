@@ -1,3 +1,4 @@
+import { desktopLabel, trashLabel } from '../copy.mjs';
 import { commandExists } from '../measure.mjs';
 import {
   cleanPrefetch,
@@ -243,14 +244,20 @@ export async function analyzeSelected(selectedIds, onLog) {
     'shaderCache',
     'appCaches',
   ].filter((id) => selected.has(id));
-  if (systemIds.length) onLog?.('Medindo lixeira, caches e resíduos do sistema...');
+  if (systemIds.length) {
+    onLog?.(
+      platform === 'darwin'
+        ? `Medindo ${trashLabel().toLowerCase()}, caches e resíduos do sistema...`
+        : 'Medindo lixeira, caches e resíduos do sistema...'
+    );
+  }
 
   if (selected.has('docker')) onLog?.('Verificando limpeza de containers...');
   if (selected.has('gradle') || selected.has('android') || selected.has('xcodeDerivedData')) {
     onLog?.('Medindo caches de desenvolvimento...');
   }
   if (selected.has('npm') || selected.has('pip')) onLog?.('Medindo caches de pacotes...');
-  if (selected.has('desktopJunk')) onLog?.('Medindo resíduos na Área de Trabalho...');
+  if (selected.has('desktopJunk')) onLog?.(`Medindo resíduos na ${desktopLabel()}...`);
 
   for (const t of available) {
     if (!selected.has(t.id)) continue;

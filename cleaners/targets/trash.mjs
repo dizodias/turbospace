@@ -1,3 +1,4 @@
+import { trashLabel } from '../copy.mjs';
 import {
   dirSize,
   emptyDirContents,
@@ -60,15 +61,16 @@ export async function cleanRecycleBin(onLog) {
 
 export async function cleanTrash(onLog) {
   const trash = userPaths().trash;
+  const name = trashLabel();
   if (!trash) {
-    return { id: 'trash', ok: false, freedBytesApprox: 0, detail: 'Lixeira não encontrada' };
+    return { id: 'trash', ok: false, freedBytesApprox: 0, detail: `${name} não encontrado` };
   }
-  onLog(`Esvaziando a Lixeira: ${trash}`);
+  onLog(`Esvaziando o ${name}: ${trash}`);
   const freed = await emptyDirContents(trash, onLog);
   return {
     id: 'trash',
     ok: true,
     freedBytesApprox: freed,
-    detail: `Lixeira ~${formatBytes(freed)}`,
+    detail: `${name} ~${formatBytes(freed)}`,
   };
 }

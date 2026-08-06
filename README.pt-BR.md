@@ -1,6 +1,6 @@
 # TurboSpace
 
-> Limpador de desktop para **Windows** e **macOS** — temporários, caches, Docker, Gradle/Android, npm/pip e mais.
+> Limpador para **Windows** e **macOS** — temporários, caches, Docker, Gradle/Android, npm/pip e mais.
 
 **Autoria:** [Dizodias Digital Engineering](https://dizodias.com)
 
@@ -15,7 +15,7 @@
 - Docker prune (`docker system prune -af`, volumes preservados)
 - Caches do Gradle e do Android SDK (AVDs não são removidos)
 - Limpeza de cache do npm e do pip
-- Lixo no Desktop (`.tmp`, `.log`, `.bak`, `.old`) e seleção de arquivos grandes
+- Resíduos na Área de Trabalho / Mesa (`.tmp`, `.log`, `.bak`, `.old`) e seleção de arquivos grandes
 - Cache de navegadores
 - Janela nativa Electron
 
@@ -24,7 +24,7 @@
 - `.exe` portátil com elevação para Administrador
 
 ### macOS
-- Lixeira (`~/.Trash`), `~/Library/Caches` com whitelist, DiagnosticReports (>7 dias), Xcode DerivedData
+- Lixo (`~/.Trash`), caches selecionados em `~/Library/Caches`, DiagnosticReports (>7 dias), Xcode DerivedData
 - Empacotamento DMG / ZIP (notarização Apple opcional)
 
 ## Requisitos
@@ -86,13 +86,13 @@ TurboSpace/
 |------|---------|-------|
 | Temp do usuário | sim | sim |
 | Windows Temp / Prefetch | sim | — |
-| Lixeira | Recycle Bin | Trash |
+| Lixeira / Lixo | Lixeira | Lixo |
 | Cache de navegadores | sim | sim |
-| Caches de apps (whitelist) | — | sim |
-| Relatórios de falha | sim | DiagnosticReports (>7d) |
+| Caches de apps | — | sim |
+| Relatórios de falha / diagnóstico | sim | DiagnosticReports (>7d) |
 | Xcode DerivedData | — | sim |
 | Docker / Gradle / Android / npm / pip | sim | sim |
-| Lixo no Desktop | sim | sim |
+| Resíduos na Área de Trabalho / Mesa | sim | sim |
 
 ## Scripts
 
