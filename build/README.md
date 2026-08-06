@@ -1,5 +1,6 @@
-# macOS icon
+# Build resources
 
-electron-builder converts `icon.png` to `.icns` during `npm run dist:mac`.
-
-This folder ships `icon.png` + `icon.ico`. `entitlements.mac.plist` is used by Hardened Runtime.
+- `icon.png` / `icon.ico` — app icons (electron-builder converts PNG → ICNS on macOS).
+- `entitlements.mac.plist` — Hardened Runtime entitlements.
+- `mac/Abrir TurboSpace.command` — Gatekeeper helper shipped in the DMG (clears quarantine + opens the app).
+- `mac/LEIA-ME - Como abrir.txt` — first-run instructions in the DMG.
