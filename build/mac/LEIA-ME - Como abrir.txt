@@ -1,0 +1,20 @@
+TurboSpace — como abrir no Mac
+================================
+
+A Apple bloqueia apps de desenvolvedores sem conta paga.
+Siga estes passos (só na primeira vez):
+
+1. Arraste "TurboSpace" para a pasta Aplicativos.
+2. Clique com o BOTÃO DIREITO em "Abrir TurboSpace"
+   (não dê duplo clique no ícone do app).
+3. No menu, escolha Abrir.
+4. Confirme Abrir no aviso da Apple.
+
+Pronto. Depois disso, abra pelo Launchpad ou por Aplicativos.
+
+Se ainda bloquear:
+  Ajustes do Sistema → Privacidade e Segurança
+  → role até a mensagem do TurboSpace
+  → Abrir mesmo assim.
+
+Autoria: Dizodias Digital Engineering — https://dizodias.com

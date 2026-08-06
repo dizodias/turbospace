@@ -53,7 +53,15 @@ npm run dist:win   # → dist/TurboSpace-Portatil.exe
 npm run dist:mac   # → dist/*.dmg and *.zip (must run on macOS)
 ```
 
-Notarization (optional): set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` before `dist:mac`.
+### Opening the macOS DMG (no Apple Developer account)
+
+Without notarization, Gatekeeper blocks the app on first launch. In the DMG:
+
+1. Drag **TurboSpace** into **Applications**.
+2. **Right-click** **Abrir TurboSpace** → **Open**.
+3. Confirm **Open** in the Apple dialog.
+
+Notarization (optional, removes that prompt): set `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` before `dist:mac`.
 
 ## Server-only mode (no window)
 
