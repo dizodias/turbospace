@@ -1,6 +1,6 @@
 {
   "name": "turbospace",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "TurboSpace — limpeza de TEMP, Prefetch, Docker, Gradle/Android, npm/pip e Desktop. Autoria Dizodias Digital Engineering (https://dizodias.com)",
   "main": "electron/main.cjs",
   "type": "module",
