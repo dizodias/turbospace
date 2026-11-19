@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('turboWindow', {
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   setBootMode: (enabled) => ipcRenderer.invoke('window:setBootMode', enabled),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   onMaximizedChange: (cb) => {
     const handler = (_event, value) => cb(value);
     ipcRenderer.on('window:maximized', handler);

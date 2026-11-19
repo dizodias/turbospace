@@ -568,6 +568,48 @@
       background: var(--accent-soft);
     }
 
+    /* Arquivos antigos (sugestões de exclusão) */
+    .stale-box { display: flex; flex-direction: column; gap: 12px; }
+    .stale-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+      color: var(--text-tertiary); margin-bottom: 6px;
+    }
+    .stale-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .stale-chip {
+      display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+      border: 1px solid var(--border); border-radius: 999px; background: var(--bg-elevated);
+      padding: 4px 10px; font-size: 12px; cursor: pointer;
+    }
+    .stale-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .stale-chip input { accent-color: var(--accent); }
+    .stale-chip button {
+      border: 0; background: none; color: var(--text-tertiary); cursor: pointer;
+      font-size: 14px; line-height: 1; padding: 0 0 0 2px;
+    }
+    .stale-chip button:hover { color: var(--danger); }
+    .stale-input, .stale-select {
+      border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text);
+      border-radius: 8px; padding: 6px 8px; font-size: 12px;
+    }
+    .stale-input { flex: 1; min-width: 0; user-select: text; -webkit-user-select: text; }
+    .btn-sm { padding: 7px 12px; font-size: 12px; border-radius: 10px; }
+    .btn-primary:disabled { opacity: 0.55; cursor: default; }
+    .stale-warn { color: var(--warn); }
+    .stale-path {
+      font-size: 11px; color: var(--text-tertiary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .stale-modes { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+    .stale-modes label {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+      color: var(--text-secondary); cursor: pointer;
+    }
+    .stale-modes input { accent-color: var(--accent); }
+    .stale-modes input:disabled, .stale-modes input:disabled + span { opacity: 0.5; cursor: default; }
+    .stale-section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 8px;
+    }
+
     .hw-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .hw-item span:last-child {
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: 500;
@@ -1007,6 +1049,23 @@
     let pendingAnalyzeSizes = null;
     let bootAnalyzeRequested = false;
 
+    // Arquivos antigos: resultado da última busca + seleção (fonte da verdade, não o DOM)
+    const STALE_PREFS_KEY = 'turbospace-stale-prefs';
+    let staleData = null;
+    let staleScannedOnce = false;
+    let staleScanning = false;
+    let staleDefaultRoots = [];
+    let pendingStaleRemoval = null;
+    const staleSel = { files: new Set(), repos: new Map() };
+    const stalePrefs = (() => {
+      const base = { days: 180, minMb: 50, custom: [], disabledDefaults: [] };
+      try {
+        return { ...base, ...(JSON.parse(localStorage.getItem(STALE_PREFS_KEY) || '{}') || {}) };
+      } catch {
+        return base;
+      }
+    })();
+
     function syncVolumeAliases() {
       selectedDrive = selectedVolume;
     }
@@ -1059,7 +1118,10 @@
       window.open(url, '_blank', 'noopener,noreferrer');
     }
 
-    document.addEventListener('selectstart', (e) => e.preventDefault());
+    document.addEventListener('selectstart', (e) => {
+      if (e.target?.closest?.('input, textarea')) return;
+      e.preventDefault();
+    });
     document.addEventListener('dragstart', (e) => {
       if (e.target && e.target.tagName === 'IMG') e.preventDefault();
     });
@@ -1446,7 +1508,7 @@
       if (!group) return;
       const meta = els.accordion.querySelector(`[data-group-meta="${groupId}"]`);
       if (!meta) return;
-      const n = groupSelectedCount(group);
+      const n = group.stale ? staleSelectedCount() : groupSelectedCount(group);
       meta.textContent = n
         ? (n === 1 ? t('selectedOne') : t('selectedMany', { n }))
         : t('none');
@@ -1483,6 +1545,7 @@
           item.classList.toggle('open', willOpen);
           trigger.setAttribute('aria-expanded', String(willOpen));
           group.open = willOpen;
+          if (group.stale && willOpen && !staleScannedOnce) runStaleScan();
         });
 
         const collapse = document.createElement('div');
@@ -1527,6 +1590,8 @@
           panel.appendChild(box);
         }
 
+        if (group.stale) buildStalePanel(panel);
+
         collapseInner.appendChild(panel);
         collapse.appendChild(collapseInner);
         item.appendChild(trigger);
@@ -1538,7 +1603,427 @@
       largeFilesEl = document.getElementById('largeFiles');
       const refreshBtn = document.getElementById('btnRefreshLarge');
       if (refreshBtn) refreshBtn.addEventListener('click', () => loadLargeFiles());
+      renderStaleRoots();
+      renderStaleResults();
+      syncStaleScanButton();
       updateCleanSummary();
+    }
+
+    // ---------- Arquivos antigos ----------
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    function fmtDate(ms) {
+      try {
+        return new Date(ms).toLocaleDateString(I18n.getLocale());
+      } catch {
+        return '';
+      }
+    }
+
+    function saveStalePrefs() {
+      try {
+        localStorage.setItem(STALE_PREFS_KEY, JSON.stringify(stalePrefs));
+      } catch {
+        // ignore
+      }
+    }
+
+    function staleFileByPath(p) {
+      return staleData?.files?.find((f) => f.path === p) || null;
+    }
+
+    function staleRepoByPath(p) {
+      return staleData?.repos?.find((r) => r.path === p) || null;
+    }
+
+    function staleSelectedCount() {
+      return staleSel.files.size + staleSel.repos.size;
+    }
+
+    function staleSelectedBytes() {
+      let total = 0;
+      for (const p of staleSel.files) total += staleFileByPath(p)?.size || 0;
+      for (const [p, mode] of staleSel.repos) {
+        const r = staleRepoByPath(p);
+        if (r) total += mode === 'full' ? r.totalBytes : r.artifactBytes;
+      }
+      return total;
+    }
+
+    function repoRisky(r) {
+      const g = r?.git || {};
+      return !g.checked || g.dirty || g.unpushed > 0 || !g.hasRemote || g.noUpstream;
+    }
+
+    function repoWarnings(r) {
+      const g = r.git || {};
+      if (!g.checked) return [t('staleWarnUnchecked')];
+      const out = [];
+      if (g.dirty) out.push(t('staleWarnDirty'));
+      if (g.unpushed > 0) out.push(t('staleWarnUnpushed', { n: g.unpushed }));
+      if (!g.hasRemote) out.push(t('staleWarnNoRemote'));
+      else if (g.noUpstream) out.push(t('staleWarnNoUpstream'));
+      return out;
+    }
+
+    function selectedStaleRoots() {
+      const disabled = new Set(stalePrefs.disabledDefaults);
+      return [
+        ...staleDefaultRoots.filter((r) => !disabled.has(r.id)).map((r) => r.path),
+        ...stalePrefs.custom,
+      ];
+    }
+
+    function onStaleSelectionChange() {
+      updateGroupMeta('old');
+      updateCleanSummary();
+      updateReclaimEstimate();
+    }
+
+    function syncStaleScanButton() {
+      const btn = document.getElementById('btnStaleScan');
+      if (!btn) return;
+      btn.disabled = staleScanning || busy;
+      btn.textContent = staleScanning ? t('staleScanning') : t('staleScan');
+    }
+
+    function addCustomStaleRoot(raw) {
+      const p = String(raw || '').trim().replace(/^"(.*)"$/, '$1');
+      if (!p || stalePrefs.custom.includes(p)) return;
+      stalePrefs.custom.push(p);
+      saveStalePrefs();
+      renderStaleRoots();
+    }
+
+    function buildStalePanel(panel) {
+      const daysOpts = [
+        [90, t('staleDaysN', { n: 90 })],
+        [180, t('staleDaysN', { n: 180 })],
+        [365, t('staleYear1')],
+        [730, t('staleYear2')],
+      ];
+      const minOpts = [10, 50, 100, 500];
+      const box = document.createElement('div');
+      box.className = 'stale-box';
+      box.innerHTML = `
+        <p class="text-xs muted">${escapeHtml(t('staleIntro'))}</p>
+        <div>
+          <div class="stale-label">${escapeHtml(t('staleWhere'))}</div>
+          <div class="stale-chips" id="staleRoots"></div>
+          <div class="flex gap-2 mt-2">
+            <input type="text" id="staleCustomInput" class="stale-input" spellcheck="false" />
+            <button type="button" id="btnStaleAdd" class="btn-ghost btn-sm">${escapeHtml(t('staleAdd'))}</button>
+            ${window.turboWindow?.pickFolder ? `<button type="button" id="btnStalePick" class="btn-ghost btn-sm">${escapeHtml(t('stalePick'))}</button>` : ''}
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3 text-xs">
+          <label class="flex items-center gap-2">${escapeHtml(t('staleDaysLabel'))}
+            <select id="staleDays" class="stale-select">
+              ${daysOpts.map(([v, l]) => `<option value="${v}">${escapeHtml(l)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="flex items-center gap-2">${escapeHtml(t('staleMinLabel'))}
+            <select id="staleMin" class="stale-select">
+              ${minOpts.map((v) => `<option value="${v}">${v} MB</option>`).join('')}
+            </select>
+          </label>
+          <button type="button" id="btnStaleScan" class="btn-primary btn-sm">${escapeHtml(t('staleScan'))}</button>
+        </div>
+        <div id="staleResults"></div>
+      `;
+      panel.appendChild(box);
+
+      const input = box.querySelector('#staleCustomInput');
+      input.placeholder = t('staleCustomPlaceholder');
+      const days = box.querySelector('#staleDays');
+      const min = box.querySelector('#staleMin');
+      days.value = String(stalePrefs.days);
+      min.value = String(stalePrefs.minMb);
+      // Valor salvo fora das opções (ex.: prefs antigas): volta ao padrão.
+      if (!days.value) days.value = String((stalePrefs.days = 180));
+      if (!min.value) min.value = String((stalePrefs.minMb = 50));
+      days.addEventListener('change', () => {
+        stalePrefs.days = Number(days.value) || 180;
+        saveStalePrefs();
+      });
+      min.addEventListener('change', () => {
+        stalePrefs.minMb = Number(min.value) || 50;
+        saveStalePrefs();
+      });
+      box.querySelector('#btnStaleAdd').addEventListener('click', () => {
+        addCustomStaleRoot(input.value);
+        input.value = '';
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        addCustomStaleRoot(input.value);
+        input.value = '';
+      });
+      box.querySelector('#btnStalePick')?.addEventListener('click', async () => {
+        const picked = await window.turboWindow.pickFolder();
+        if (picked) addCustomStaleRoot(picked);
+      });
+      box.querySelector('#btnStaleScan').addEventListener('click', () => runStaleScan());
+    }
+
+    function renderStaleRoots() {
+      const wrap = document.getElementById('staleRoots');
+      if (!wrap) return;
+      wrap.innerHTML = '';
+      const disabled = new Set(stalePrefs.disabledDefaults);
+      const labelFor = { downloads: 'staleRootDownloads', desktop: 'staleRootDesktop', documents: 'staleRootDocuments' };
+      for (const r of staleDefaultRoots) {
+        const chip = document.createElement('label');
+        chip.className = 'stale-chip';
+        chip.title = r.path;
+        chip.innerHTML = `<input type="checkbox" /><span></span>`;
+        chip.querySelector('span').textContent = t(labelFor[r.id] || r.id);
+        const cb = chip.querySelector('input');
+        cb.checked = !disabled.has(r.id);
+        cb.addEventListener('change', () => {
+          const set = new Set(stalePrefs.disabledDefaults);
+          if (cb.checked) set.delete(r.id);
+          else set.add(r.id);
+          stalePrefs.disabledDefaults = [...set];
+          saveStalePrefs();
+        });
+        wrap.appendChild(chip);
+      }
+      for (const p of stalePrefs.custom) {
+        const chip = document.createElement('span');
+        chip.className = 'stale-chip';
+        chip.title = p;
+        chip.innerHTML = `<span></span><button type="button">×</button>`;
+        chip.querySelector('span').textContent = p;
+        const rm = chip.querySelector('button');
+        rm.title = t('staleRemove');
+        rm.setAttribute('aria-label', t('staleRemove'));
+        rm.addEventListener('click', () => {
+          stalePrefs.custom = stalePrefs.custom.filter((x) => x !== p);
+          saveStalePrefs();
+          renderStaleRoots();
+        });
+        wrap.appendChild(chip);
+      }
+    }
+
+    async function loadStaleRoots() {
+      try {
+        const res = await fetch('/api/stale/roots');
+        const data = await res.json();
+        staleDefaultRoots = data.roots || [];
+      } catch {
+        staleDefaultRoots = [];
+      }
+      renderStaleRoots();
+    }
+
+    async function runStaleScan() {
+      if (staleScanning || busy) return;
+      const resultsEl = document.getElementById('staleResults');
+      const roots = selectedStaleRoots();
+      staleScannedOnce = true;
+      if (!roots.length) {
+        if (resultsEl) resultsEl.innerHTML = `<p class="muted text-xs">${escapeHtml(t('staleNoRoots'))}</p>`;
+        return;
+      }
+      staleScanning = true;
+      syncStaleScanButton();
+      if (resultsEl) resultsEl.innerHTML = `<p class="muted text-xs">${escapeHtml(t('staleScanning'))}</p>`;
+      let error = null;
+      try {
+        const res = await fetch('/api/stale/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            roots,
+            days: stalePrefs.days,
+            minFileBytes: stalePrefs.minMb * 1024 * 1024,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Falha');
+        staleData = data;
+        staleSel.files.clear();
+        staleSel.repos.clear();
+      } catch (err) {
+        error = err;
+      } finally {
+        staleScanning = false;
+        syncStaleScanButton();
+      }
+      if (error) {
+        const el = document.getElementById('staleResults');
+        if (el) {
+          el.innerHTML = '<p class="text-xs" style="color:var(--danger)"></p>';
+          el.firstChild.textContent = error.message;
+        }
+      } else {
+        renderStaleResults();
+      }
+      onStaleSelectionChange();
+    }
+
+    function staleSectionHead(title, onToggleAll) {
+      const head = document.createElement('div');
+      head.className = 'stale-section-head';
+      head.innerHTML = `<span class="text-xs font-semibold"></span><button type="button" class="btn-link"></button>`;
+      head.querySelector('span').textContent = title;
+      const btn = head.querySelector('button');
+      btn.textContent = t('staleSelectAll');
+      btn.addEventListener('click', onToggleAll);
+      return head;
+    }
+
+    function staleRepoRow(r, idx) {
+      const row = document.createElement('div');
+      row.className = 'target-row';
+      const hasArtifacts = r.artifactBytes > 0;
+      row.innerHTML = `
+        <input type="checkbox" class="acc-check" />
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-semibold truncate" data-f="name"></span>
+          <span class="block text-xs muted mt-0.5" data-f="meta"></span>
+          <span class="block text-xs mt-0.5 stale-warn" data-f="warn"></span>
+          <span class="stale-path block mt-0.5" data-f="path"></span>
+          <span class="stale-modes">
+            <label><input type="radio" name="staleMode${idx}" value="artifacts" ${hasArtifacts ? '' : 'disabled'} /><span data-f="art"></span></label>
+            <label><input type="radio" name="staleMode${idx}" value="full" /><span data-f="full"></span></label>
+          </span>
+        </span>
+      `;
+      const f = (k) => row.querySelector(`[data-f="${k}"]`);
+      f('name').textContent = r.name;
+      f('meta').textContent = `${t('staleRepoIdle', { n: r.idleDays, date: fmtDate(r.lastActivity) })} · ${t('staleTotal', { size: r.totalLabel })}`;
+      const warns = repoWarnings(r);
+      if (warns.length) f('warn').textContent = `⚠ ${warns.join(' · ')}`;
+      else f('warn').remove();
+      f('path').textContent = r.path;
+      f('path').title = r.path;
+      f('art').textContent = hasArtifacts
+        ? `${t('staleModeArtifacts', { size: r.artifactLabel })}${r.artifactNames?.length ? ` · ${r.artifactNames.slice(0, 4).join(', ')}` : ''}`
+        : t('staleNoArtifacts');
+      f('full').textContent = t('staleModeFull', { size: r.totalLabel });
+
+      const cb = row.querySelector('input[type=checkbox]');
+      const radios = [...row.querySelectorAll('input[type=radio]')];
+      const currentMode = () => staleSel.repos.get(r.path) || (hasArtifacts ? 'artifacts' : 'full');
+      const sync = () => {
+        const selected = staleSel.repos.has(r.path);
+        cb.checked = selected;
+        row.classList.toggle('selected', selected);
+        const mode = currentMode();
+        for (const rd of radios) rd.checked = rd.value === mode;
+      };
+      cb.addEventListener('change', () => {
+        if (cb.checked) staleSel.repos.set(r.path, currentMode());
+        else staleSel.repos.delete(r.path);
+        sync();
+        onStaleSelectionChange();
+      });
+      for (const rd of radios) {
+        rd.addEventListener('change', () => {
+          if (!rd.checked) return;
+          staleSel.repos.set(r.path, rd.value);
+          sync();
+          onStaleSelectionChange();
+        });
+      }
+      row.addEventListener('click', (e) => {
+        if (e.target.closest('input, label')) return;
+        cb.click();
+      });
+      row._sync = sync;
+      sync();
+      return row;
+    }
+
+    function staleFileRow(file) {
+      const row = document.createElement('label');
+      row.className = 'target-row';
+      row.innerHTML = `
+        <input type="checkbox" class="acc-check" />
+        <span class="min-w-0 flex-1">
+          <span class="block text-sm font-semibold truncate" data-f="name"></span>
+          <span class="block text-xs muted mt-0.5" data-f="meta"></span>
+          <span class="stale-path block mt-0.5" data-f="path"></span>
+        </span>
+      `;
+      row.querySelector('[data-f="name"]').textContent = file.name;
+      row.querySelector('[data-f="meta"]').textContent =
+        `${file.sizeLabel} · ${t('staleFileIdle', { n: file.idleDays, date: fmtDate(file.lastUsed) })}`;
+      const pathEl = row.querySelector('[data-f="path"]');
+      pathEl.textContent = file.path;
+      pathEl.title = file.path;
+      const cb = row.querySelector('input');
+      const sync = () => {
+        cb.checked = staleSel.files.has(file.path);
+        row.classList.toggle('selected', cb.checked);
+      };
+      cb.addEventListener('change', () => {
+        if (cb.checked) staleSel.files.add(file.path);
+        else staleSel.files.delete(file.path);
+        sync();
+        onStaleSelectionChange();
+      });
+      row._sync = sync;
+      sync();
+      return row;
+    }
+
+    function renderStaleResults() {
+      const el = document.getElementById('staleResults');
+      if (!el) return;
+      if (!staleData) {
+        el.innerHTML = staleScannedOnce ? '' : `<p class="muted text-xs">${escapeHtml(t('staleNotScanned'))}</p>`;
+        return;
+      }
+      const files = staleData.files || [];
+      const repos = staleData.repos || [];
+      el.innerHTML = '';
+      if (!files.length && !repos.length) {
+        el.innerHTML = `<p class="muted text-xs">${escapeHtml(t('staleNone', { n: staleData.days }))}</p>`;
+        return;
+      }
+      if (staleData.truncated) {
+        const p = document.createElement('p');
+        p.className = 'text-xs stale-warn mb-2';
+        p.textContent = t('staleTruncated');
+        el.appendChild(p);
+      }
+      if (repos.length) {
+        const rows = repos.map((r, i) => staleRepoRow(r, i));
+        el.appendChild(
+          staleSectionHead(t('staleReposTitle', { n: repos.length }), () => {
+            const all = repos.every((r) => staleSel.repos.has(r.path));
+            for (const r of repos) {
+              if (all) staleSel.repos.delete(r.path);
+              else if (!staleSel.repos.has(r.path)) staleSel.repos.set(r.path, r.artifactBytes > 0 ? 'artifacts' : 'full');
+            }
+            rows.forEach((row) => row._sync());
+            onStaleSelectionChange();
+          })
+        );
+        rows.forEach((row) => el.appendChild(row));
+      }
+      if (files.length) {
+        const rows = files.map((f) => staleFileRow(f));
+        const head = staleSectionHead(t('staleFilesTitle', { n: files.length }), () => {
+          const all = files.every((f) => staleSel.files.has(f.path));
+          for (const f of files) {
+            if (all) staleSel.files.delete(f.path);
+            else staleSel.files.add(f.path);
+          }
+          rows.forEach((row) => row._sync());
+          onStaleSelectionChange();
+        });
+        if (repos.length) head.style.marginTop = '14px';
+        el.appendChild(head);
+        rows.forEach((row) => el.appendChild(row));
+      }
     }
 
     function setPanelOpen(section, toggle, open) {
@@ -1557,7 +2042,7 @@
     }
 
     function updateCleanSummary() {
-      const n = selectedTargets().length + selectedDesktopPaths().length;
+      const n = selectedTargets().length + selectedDesktopPaths().length + staleSelectedCount();
       if (els.cleanSummary) {
         els.cleanSummary.textContent = n
           ? (n === 1 ? t('cleanSummaryOne') : t('cleanSummaryMany', { n }))
@@ -1596,9 +2081,12 @@
     }
 
     function syncCleanButton() {
-      const hasSelection = selectedTargets().length > 0 || selectedDesktopPaths().length > 0;
-      els.btnClean.disabled = busy || !analyzed || !hasSelection;
-      els.btnClean.title = !analyzed
+      const staleCount = staleSelectedCount();
+      const hasSelection = selectedTargets().length > 0 || selectedDesktopPaths().length > 0 || staleCount > 0;
+      // Itens antigos já vêm de uma busca própria: não exigem "Analisar".
+      const ready = analyzed || staleCount > 0;
+      els.btnClean.disabled = busy || !ready || !hasSelection;
+      els.btnClean.title = !ready
         ? t('cleanNeedAnalyze')
         : !hasSelection
           ? t('cleanNeedSelect')
@@ -1609,16 +2097,18 @@
       busy = v;
       els.btnAnalyze.disabled = v;
       syncCleanButton();
+      syncStaleScanButton();
     }
 
     function updateReclaimEstimate() {
-      if (!analyzed) {
+      const staleCount = staleSelectedCount();
+      if (!analyzed && !staleCount) {
         els.reclaimBox.hidden = true;
         syncCleanButton();
         return;
       }
 
-      let total = 0;
+      let total = staleSelectedBytes();
       let hasVariable = false;
       const targets = selectedTargets();
 
@@ -1640,7 +2130,7 @@
       els.reclaimBox.hidden = false;
       if (total <= 0 && !hasVariable) {
         els.reclaimSpace.textContent = '0 B';
-        els.reclaimNote.textContent = targets.length || selectedDesktopPaths().length
+        els.reclaimNote.textContent = targets.length || selectedDesktopPaths().length || staleCount
           ? t('reclaimZeroNote')
           : t('reclaimSelect');
       } else if (total <= 0 && hasVariable) {
@@ -1828,6 +2318,17 @@
           const data = JSON.parse(ev.data);
           if (data.freeAfterLabel) els.freeSpace.textContent = data.freeAfterLabel;
           analyzed = false;
+          if (pendingStaleRemoval && staleData) {
+            const gone = new Set([...pendingStaleRemoval.files, ...pendingStaleRemoval.repos]);
+            staleData.files = (staleData.files || []).filter((f) => !gone.has(f.path));
+            staleData.repos = (staleData.repos || []).filter((r) => !gone.has(r.path));
+            staleSel.files.clear();
+            staleSel.repos.clear();
+            renderStaleResults();
+            updateGroupMeta('old');
+            updateCleanSummary();
+          }
+          pendingStaleRemoval = null;
           els.reclaimBox.hidden = true;
           syncCleanButton();
           loadLargeFiles();
@@ -1855,27 +2356,78 @@
       });
     }
 
-    function confirmDocker() {
+    const MODAL_TONES = {
+      warn: 'background: var(--warn-soft); color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent)',
+      danger: 'background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent)',
+    };
+
+    function openConfirm({ title, bodyHtml, confirmLabel, tone = 'warn' }) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalBody').innerHTML = bodyHtml;
+      els.modalConfirm.textContent = confirmLabel;
+      els.modalConfirm.setAttribute('style', MODAL_TONES[tone] || MODAL_TONES.warn);
       return new Promise((resolve) => {
         pendingCleanResolve = resolve;
         els.modalBackdrop.classList.add('open');
       });
     }
 
+    function confirmDocker() {
+      return openConfirm({
+        title: t('modalTitle'),
+        bodyHtml: `${t('modalBodyBefore')}<strong style="color: var(--warn)">${t('modalBodyStrong')}</strong>${t('modalBodyAfter')}`,
+        confirmLabel: t('confirm'),
+      });
+    }
+
+    function confirmStale(staleFiles, staleRepos) {
+      const full = staleRepos.filter((r) => r.mode === 'full');
+      const risky = full.filter((r) => repoRisky(staleRepoByPath(r.path))).length;
+      let body = escapeHtml(
+        t('staleConfirmBody', {
+          files: staleFiles.length,
+          full: full.length,
+          art: staleRepos.length - full.length,
+          size: formatBytesClient(staleSelectedBytes()),
+        })
+      );
+      if (risky) {
+        body += `<br><br><strong style="color: var(--danger)">${escapeHtml(t('staleConfirmRisk', { n: risky }))}</strong>`;
+      }
+      return openConfirm({
+        title: t('staleConfirmTitle'),
+        bodyHtml: body,
+        confirmLabel: t('staleConfirmBtn'),
+        tone: 'danger',
+      });
+    }
+
     async function clean() {
-      if (!analyzed) return;
       const targets = selectedTargets();
       const desktopPaths = selectedDesktopPaths();
-      if (!targets.length && !desktopPaths.length) {
+      const staleFiles = [...staleSel.files];
+      const staleRepos = [...staleSel.repos].map(([path, mode]) => ({ path, mode }));
+      const hasStale = staleFiles.length > 0 || staleRepos.length > 0;
+      if (!analyzed && !hasStale) return;
+      if (!targets.length && !desktopPaths.length && !hasStale) {
         appendLog(t('noSelection'));
         return;
       }
+      pendingStaleRemoval = null;
       if (targets.includes('docker')) {
         const ok = await confirmDocker();
         if (!ok) {
           appendLog(t('cleanCancelled'));
           return;
         }
+      }
+      if (hasStale) {
+        const ok = await confirmStale(staleFiles, staleRepos);
+        if (!ok) {
+          appendLog(t('cleanCancelled'));
+          return;
+        }
+        pendingStaleRemoval = { files: staleFiles, repos: staleRepos.map((r) => r.path) };
       }
       setBusy(true);
       els.console.innerHTML = '';
@@ -1884,7 +2436,7 @@
       await fetch('/api/clean', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targets, desktopPaths }),
+        body: JSON.stringify({ targets, desktopPaths, staleFiles, staleRepos }),
       });
     }
 
@@ -1910,6 +2462,7 @@
     });
 
     connectSse();
+    loadStaleRoots();
     loadPlatformTargets().finally(() => startBootFlow());
   </script>
 </body>

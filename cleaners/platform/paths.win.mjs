@@ -5,11 +5,17 @@ export function userPaths() {
   const home = os.homedir();
   const local = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
   const temp = process.env.TEMP || process.env.TMP || path.join(local, 'Temp');
+  const appData = process.env.APPDATA || path.join(home, 'AppData', 'Roaming');
   return {
     home,
     local,
+    appData,
     temp,
     desktop: path.join(home, 'Desktop'),
+    downloads: path.join(home, 'Downloads'),
+    documents: path.join(home, 'Documents'),
+    caches: null,
+    logs: null,
     winTemp: 'C:\\Windows\\Temp',
     prefetch: 'C:\\Windows\\Prefetch',
     trash: null,

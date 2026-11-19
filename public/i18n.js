@@ -225,6 +225,44 @@ window.TurboI18n = (function () {
       bootDriveFree: '{free} livres de {total}',
       bootBack: 'Voltar',
       bootStart: 'Começar',
+      staleIntro: 'Sugestões de arquivos grandes e repositórios parados. A exclusão é definitiva (não vai para a Lixeira).',
+      staleWhere: 'Onde procurar',
+      staleRootDownloads: 'Downloads',
+      staleRootDesktop: 'Área de Trabalho',
+      staleRootDocuments: 'Documentos',
+      staleCustomPlaceholder: 'Outra pasta (cole o caminho)',
+      staleAdd: 'Adicionar',
+      stalePick: 'Escolher pasta...',
+      staleRemove: 'Remover',
+      staleDaysLabel: 'Sem uso há',
+      staleDaysN: '{n} dias',
+      staleYear1: '1 ano',
+      staleYear2: '2 anos',
+      staleMinLabel: 'Arquivos a partir de',
+      staleScan: 'Buscar itens antigos',
+      staleScanning: 'Buscando... pode levar alguns minutos',
+      staleReposTitle: 'Repositórios parados ({n})',
+      staleFilesTitle: 'Arquivos sem uso ({n})',
+      staleNone: 'Nada sem uso há {n} dias nas pastas escolhidas.',
+      staleNotScanned: 'Clique em Buscar para procurar itens antigos.',
+      staleNoRoots: 'Escolha ao menos uma pasta.',
+      staleFileIdle: 'último uso há {n} dias ({date})',
+      staleRepoIdle: 'sem alterações há {n} dias ({date})',
+      staleTotal: 'total {size}',
+      staleModeArtifacts: 'Só dependências/builds ({size})',
+      staleModeFull: 'Repositório inteiro ({size})',
+      staleNoArtifacts: 'sem dependências/builds para remover',
+      staleWarnDirty: 'alterações não commitadas',
+      staleWarnUnpushed: '{n} commit(s) não enviado(s)',
+      staleWarnNoRemote: 'sem remoto: o código só existe aqui',
+      staleWarnNoUpstream: 'branch sem upstream',
+      staleWarnUnchecked: 'não foi possível verificar o git',
+      staleSelectAll: 'Marcar todos',
+      staleTruncated: 'Muitos itens: resultados parciais.',
+      staleConfirmTitle: 'Excluir definitivamente?',
+      staleConfirmBody: 'Serão excluídos {files} arquivo(s) e {full} repositório(s) inteiro(s), e removidas dependências/builds de {art} repositório(s): ~{size}. Isso não vai para a Lixeira e não pode ser desfeito.',
+      staleConfirmRisk: '{n} repositório(s) marcado(s) para exclusão inteira têm trabalho não enviado.',
+      staleConfirmBtn: 'Excluir',
       groups: {
         temp: {
           title: 'Arquivos temporários',
@@ -315,6 +353,33 @@ window.TurboI18n = (function () {
               hint: 'Remove imagens e containers não usados',
             },
           },
+        },
+        ai: {
+          title: 'Ferramentas de IA',
+          summary: 'Caches de editores, apps e agentes de IA (conversas e configurações preservadas)',
+          items: {
+            aiCursor: {
+              label: 'Cursor',
+              hint: 'Cache, CachedData, logs e navegador embutido. Chats e configurações ficam intactos',
+            },
+            aiClaude: {
+              label: 'Claude (app e Claude Code)',
+              hint: 'Cache e logs do app desktop e cache do Claude Code. Conversas e projetos ficam intactos',
+            },
+            aiEditors: {
+              label: 'Outros editores com IA',
+              hint: 'VS Code (Copilot), Windsurf, Trae, Kiro e Antigravity: cache, CachedData e logs',
+            },
+            aiAgents: {
+              label: 'Agentes e CLIs de IA',
+              hint: 'Cache dos navegadores do Playwright MCP e do Gemini/Antigravity, logs do Codex',
+            },
+          },
+        },
+        old: {
+          title: 'Arquivos antigos',
+          summary: 'Arquivos e repositórios sem uso há muito tempo (sugestões para excluir)',
+          items: {},
         },
         desktop: {
           title: 'Área de Trabalho',
@@ -410,6 +475,44 @@ window.TurboI18n = (function () {
       bootDriveFree: '{free} free of {total}',
       bootBack: 'Back',
       bootStart: 'Start',
+      staleIntro: 'Suggestions of large files and idle repositories. Deletion is permanent (does not go to the Recycle Bin).',
+      staleWhere: 'Where to look',
+      staleRootDownloads: 'Downloads',
+      staleRootDesktop: 'Desktop',
+      staleRootDocuments: 'Documents',
+      staleCustomPlaceholder: 'Another folder (paste the path)',
+      staleAdd: 'Add',
+      stalePick: 'Choose folder...',
+      staleRemove: 'Remove',
+      staleDaysLabel: 'Unused for',
+      staleDaysN: '{n} days',
+      staleYear1: '1 year',
+      staleYear2: '2 years',
+      staleMinLabel: 'Files from',
+      staleScan: 'Find old items',
+      staleScanning: 'Searching... this may take a few minutes',
+      staleReposTitle: 'Idle repositories ({n})',
+      staleFilesTitle: 'Unused files ({n})',
+      staleNone: 'Nothing unused for {n} days in the chosen folders.',
+      staleNotScanned: 'Click Find to look for old items.',
+      staleNoRoots: 'Choose at least one folder.',
+      staleFileIdle: 'last used {n} days ago ({date})',
+      staleRepoIdle: 'no changes for {n} days ({date})',
+      staleTotal: 'total {size}',
+      staleModeArtifacts: 'Dependencies/builds only ({size})',
+      staleModeFull: 'Entire repository ({size})',
+      staleNoArtifacts: 'no dependencies/builds to remove',
+      staleWarnDirty: 'uncommitted changes',
+      staleWarnUnpushed: '{n} unpushed commit(s)',
+      staleWarnNoRemote: 'no remote: the code only exists here',
+      staleWarnNoUpstream: 'branch has no upstream',
+      staleWarnUnchecked: 'could not check git',
+      staleSelectAll: 'Select all',
+      staleTruncated: 'Too many items: partial results.',
+      staleConfirmTitle: 'Delete permanently?',
+      staleConfirmBody: '{files} file(s) and {full} entire repository(ies) will be deleted, and dependencies/builds removed from {art} repository(ies): ~{size}. This does not go to the Recycle Bin and cannot be undone.',
+      staleConfirmRisk: '{n} repository(ies) marked for full deletion have unpushed work.',
+      staleConfirmBtn: 'Delete',
       groups: {
         temp: {
           title: 'Temporary files',
@@ -501,6 +604,33 @@ window.TurboI18n = (function () {
             },
           },
         },
+        ai: {
+          title: 'AI tools',
+          summary: 'Caches from AI editors, apps and agents (chats and settings preserved)',
+          items: {
+            aiCursor: {
+              label: 'Cursor',
+              hint: 'Cache, CachedData, logs and built-in browser. Chats and settings stay intact',
+            },
+            aiClaude: {
+              label: 'Claude (app and Claude Code)',
+              hint: 'Desktop app cache and logs plus Claude Code cache. Conversations and projects stay intact',
+            },
+            aiEditors: {
+              label: 'Other AI editors',
+              hint: 'VS Code (Copilot), Windsurf, Trae, Kiro and Antigravity: cache, CachedData and logs',
+            },
+            aiAgents: {
+              label: 'AI agents and CLIs',
+              hint: 'Playwright MCP and Gemini/Antigravity browser caches, Codex logs',
+            },
+          },
+        },
+        old: {
+          title: 'Old files',
+          summary: 'Files and repositories unused for a long time (deletion suggestions)',
+          items: {},
+        },
         desktop: {
           title: 'Desktop',
           summary: 'Junk files and large files on the Desktop',
@@ -525,6 +655,8 @@ window.TurboI18n = (function () {
         freeSpace: 'Espaço livre em {drive}',
         gpu: 'Gráficos',
         largeFilesTitle: 'Arquivos grandes na Mesa',
+        staleRootDesktop: 'Mesa',
+        staleIntro: 'Sugestões de arquivos grandes e repositórios parados. A exclusão é definitiva (não vai para o Lixo).',
         bootDriveTitle: 'Escolha o volume',
         bootDriveHint: 'Qual volume deseja analisar?',
         bootModeHint: 'Você pode analisar o Mac agora ou só abrir o app.',
@@ -582,6 +714,7 @@ window.TurboI18n = (function () {
         bootDriveTitle: 'Choose a volume',
         bootDriveHint: 'Which volume do you want to analyze?',
         bootModeHint: 'You can analyze your Mac now or just open the app.',
+        staleIntro: 'Suggestions of large files and idle repositories. Deletion is permanent (does not go to the Trash).',
         groups: {
           temp: {
             summary: 'Your account temporary folder',
@@ -642,7 +775,9 @@ window.TurboI18n = (function () {
       items: ['xcodeDerivedData', 'gradle', 'android', 'npm', 'pip', 'docker'],
       warn: { docker: true },
     },
+    { id: 'ai', open: false, items: ['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents'] },
     { id: 'desktop', open: false, items: ['desktopJunk'], largeFiles: true },
+    { id: 'old', open: false, items: [], stale: true },
   ];
 
   function deepMerge(base, overlay) {
@@ -704,6 +839,9 @@ window.TurboI18n = (function () {
       text = text.replace('{drive}', String(vars.drive ?? (currentPlatform === 'darwin' ? 'Macintosh HD' : 'C:')));
       text = text.replace('{free}', String(vars.free ?? ''));
       text = text.replace('{total}', String(vars.total ?? ''));
+      for (const [k, v] of Object.entries(vars)) {
+        text = text.split(`{${k}}`).join(String(v ?? ''));
+      }
     }
     return text;
   }
@@ -737,13 +875,14 @@ window.TurboI18n = (function () {
           safe: id !== 'docker',
           warn: !!(meta.warn && meta.warn[id]),
         }));
-      if (!items.length) return null;
+      if (!items.length && !meta.stale) return null;
       return {
         id: meta.id,
         title: src.title,
         summary: src.summary,
         open: meta.open,
         largeFiles: !!meta.largeFiles,
+        stale: !!meta.stale,
         items,
       };
     }).filter(Boolean);

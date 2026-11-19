@@ -8,8 +8,13 @@ export function userPaths() {
   return {
     home,
     local: path.join(home, 'Library'),
+    appData: path.join(home, 'Library', 'Application Support'),
     temp: tmp,
     desktop: path.join(home, 'Desktop'),
+    downloads: path.join(home, 'Downloads'),
+    documents: path.join(home, 'Documents'),
+    caches: libraryCaches,
+    logs: path.join(home, 'Library', 'Logs'),
     winTemp: null,
     prefetch: null,
     trash: path.join(home, '.Trash'),

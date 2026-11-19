@@ -209,6 +209,15 @@ ipcMain.handle('window:setBootMode', (_event, enabled) => {
   return true;
 });
 
+ipcMain.handle('dialog:pickFolder', async () => {
+  const options = { properties: ['openDirectory'] };
+  const result = mainWindow
+    ? await dialog.showOpenDialog(mainWindow, options)
+    : await dialog.showOpenDialog(options);
+  if (result.canceled || !result.filePaths?.length) return null;
+  return result.filePaths[0];
+});
+
 ipcMain.handle('shell:openExternal', async (_event, url) => {
   if (typeof url !== 'string' || !/^https?:\/\//i.test(url)) return false;
   await shell.openExternal(url);

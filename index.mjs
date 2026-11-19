@@ -29,6 +29,7 @@ import {
   deleteDesktopPaths,
   listLargeDesktopFiles,
 } from './cleaners/targets/desktop.mjs';
+import { defaultStaleRoots, deleteStale, scanStale } from './cleaners/targets/stale.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -166,7 +167,7 @@ async function analyzeTargets(targets) {
   return labeled;
 }
 
-async function runClean({ targets, desktopPaths }) {
+async function runClean({ targets, desktopPaths, staleFiles, staleRepos }) {
   const selected = targets || [];
   const volume = state.volume || defaultVolumeId();
   const freeBefore = await getDriveFreeBytes(volume);
@@ -185,6 +186,19 @@ async function runClean({ targets, desktopPaths }) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       logLine(`ERRO arquivos grandes (${desk}): ${msg}`, 'stderr');
+    }
+  }
+
+  if (staleFiles?.length || staleRepos?.length) {
+    logLine('—');
+    logLine('>>> Excluindo itens antigos selecionados');
+    try {
+      const result = await deleteStale({ files: staleFiles, repos: staleRepos }, logLine);
+      results.push(result);
+      logLine(`<<< ${result.detail}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logLine(`ERRO itens antigos: ${msg}`, 'stderr');
     }
   }
 
@@ -352,6 +366,54 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === 'GET' && url.pathname === '/api/stale/roots') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: true, roots: defaultStaleRoots() }));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/stale/scan') {
+    if (state.busy) {
+      res.writeHead(409, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'Operação em andamento' }));
+      return;
+    }
+    let body;
+    try {
+      body = await readBody(req);
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+      return;
+    }
+    state.busy = true;
+    setStatus('analyzing', 'Buscando itens antigos...');
+    logLine('—');
+    logLine('Buscando arquivos e repositórios sem uso...');
+    try {
+      const result = await scanStale(
+        {
+          roots: Array.isArray(body.roots) ? body.roots : [],
+          days: Number(body.days) || 180,
+          minFileBytes: Number(body.minFileBytes) || 0,
+        },
+        logLine
+      );
+      setStatus('ok', 'Busca de itens antigos concluída');
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, ...result }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logLine(`ERRO na busca de itens antigos: ${msg}`, 'stderr');
+      setStatus('error', 'Falha na busca de itens antigos');
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    } finally {
+      state.busy = false;
+    }
+    return;
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/analyze') {
     if (state.busy) {
       res.writeHead(409, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -416,7 +478,9 @@ const server = http.createServer(async (req, res) => {
 
     const targets = Array.isArray(body.targets) ? body.targets : [];
     const desktopPaths = Array.isArray(body.desktopPaths) ? body.desktopPaths : [];
-    if (!targets.length && !desktopPaths.length) {
+    const staleFiles = Array.isArray(body.staleFiles) ? body.staleFiles : [];
+    const staleRepos = Array.isArray(body.staleRepos) ? body.staleRepos : [];
+    if (!targets.length && !desktopPaths.length && !staleFiles.length && !staleRepos.length) {
       res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
       res.end(JSON.stringify({ ok: false, error: 'Nenhum alvo selecionado' }));
       return;
@@ -430,7 +494,7 @@ const server = http.createServer(async (req, res) => {
     res.end(JSON.stringify({ ok: true, started: true }));
 
     try {
-      const summary = await runClean({ targets, desktopPaths });
+      const summary = await runClean({ targets, desktopPaths, staleFiles, staleRepos });
       logLine('Limpeza concluída!');
       setStatus('ok', `Liberados ~${summary.freedDeltaLabel}`);
       broadcast('clean', summary);

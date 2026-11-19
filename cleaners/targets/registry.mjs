@@ -39,6 +39,16 @@ import {
 } from './gradle-android.mjs';
 import { cleanNpm, cleanPip, measureNpm, measurePip } from './npm-pip.mjs';
 import { cleanDesktopJunk, measureDesktopJunk } from './desktop.mjs';
+import {
+  cleanAiAgents,
+  cleanAiClaude,
+  cleanAiCursor,
+  cleanAiEditors,
+  measureAiAgents,
+  measureAiClaude,
+  measureAiCursor,
+  measureAiEditors,
+} from './ai-tools.mjs';
 
 /**
  * @typedef {{
@@ -184,6 +194,34 @@ export const TARGETS = [
     clean: cleanPip,
   },
   {
+    id: 'aiCursor',
+    platforms: ['win32', 'darwin'],
+    group: 'ai',
+    measure: measureAiCursor,
+    clean: cleanAiCursor,
+  },
+  {
+    id: 'aiClaude',
+    platforms: ['win32', 'darwin'],
+    group: 'ai',
+    measure: measureAiClaude,
+    clean: cleanAiClaude,
+  },
+  {
+    id: 'aiEditors',
+    platforms: ['win32', 'darwin'],
+    group: 'ai',
+    measure: measureAiEditors,
+    clean: cleanAiEditors,
+  },
+  {
+    id: 'aiAgents',
+    platforms: ['win32', 'darwin'],
+    group: 'ai',
+    measure: measureAiAgents,
+    clean: cleanAiAgents,
+  },
+  {
     id: 'desktopJunk',
     platforms: ['win32', 'darwin'],
     group: 'desktop',
@@ -192,7 +230,7 @@ export const TARGETS = [
   },
 ];
 
-const GROUP_ORDER = ['temp', 'system', 'dev', 'desktop'];
+const GROUP_ORDER = ['temp', 'system', 'dev', 'ai', 'desktop'];
 
 export function targetsFor(platform = process.platform) {
   return TARGETS.filter((t) => t.platforms.includes(platform));
@@ -257,6 +295,9 @@ export async function analyzeSelected(selectedIds, onLog) {
     onLog?.('Medindo caches de desenvolvimento...');
   }
   if (selected.has('npm') || selected.has('pip')) onLog?.('Medindo caches de pacotes...');
+  if (['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents'].some((id) => selected.has(id))) {
+    onLog?.('Medindo caches de ferramentas de IA...');
+  }
   if (selected.has('desktopJunk')) onLog?.(`Medindo resíduos na ${desktopLabel()}...`);
 
   for (const t of available) {
