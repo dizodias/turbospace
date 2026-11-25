@@ -32,6 +32,11 @@ import {
 import { defaultStaleRoots, deleteStale, scanStale } from './cleaners/targets/stale.mjs';
 import { scanDisk } from './cleaners/xray/scan.mjs';
 import { revealPath } from './cleaners/xray/reveal.mjs';
+import {
+  listSteamGames,
+  openSteamStorage,
+  openSteamUninstall,
+} from './cleaners/xray/steam-games.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -468,6 +473,40 @@ const server = http.createServer(async (req, res) => {
     } finally {
       state.xrayBusy = false;
     }
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/xray/steam') {
+    try {
+      const result = await listSteamGames();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/xray/steam/uninstall') {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch {
+      body = {};
+    }
+    // só abre o steam://uninstall: a confirmação final é do próprio Steam
+    const ok = openSteamUninstall(body.appid);
+    if (ok) logLine(`Raio-X: desinstalação do app ${body.appid} aberta no Steam`);
+    res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok }));
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/xray/steam/storage') {
+    const ok = openSteamStorage();
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok }));
     return;
   }
 

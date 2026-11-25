@@ -63,6 +63,7 @@
       b.setAttribute('aria-selected', String(on));
     }
     if (X.tab === 'xray' && !X.scannedOnce && !X.scanning) scan();
+    if (X.tab === 'xray' && !S.loaded) loadSteam();
     window.dispatchEvent(new CustomEvent('turbospace-tab', { detail: X.tab }));
   }
 
@@ -303,14 +304,143 @@
     }
   }
 
+  /* ---------- jogos do Steam ---------- */
+
+  const S = { data: null, sort: 'size', loading: false, loaded: false };
+  X.steam = S;
+
+  async function loadSteam() {
+    if (S.loading) return;
+    S.loading = true;
+    try {
+      const r = await fetch('/api/xray/steam').then((res) => res.json());
+      S.data = r.ok ? r : null;
+    } catch {
+      S.data = null;
+    } finally {
+      S.loading = false;
+      S.loaded = true;
+      renderSteam();
+    }
+  }
+
+  function playedLabel(ms) {
+    if (!ms) return t('xrayPlayedNever');
+    const days = Math.floor((Date.now() - ms) / 86400000);
+    let when;
+    try {
+      const rtf = new Intl.RelativeTimeFormat(I18n.getLocale(), { numeric: 'auto' });
+      if (days < 30) when = rtf.format(-Math.max(0, days), 'day');
+      else if (days < 365) when = rtf.format(-Math.round(days / 30), 'month');
+      else when = rtf.format(-Math.round(days / 365), 'year');
+    } catch {
+      when = new Date(ms).toLocaleDateString(I18n.getLocale());
+    }
+    return t('xrayPlayedAgo', { when });
+  }
+
+  async function confirmUninstall(g) {
+    const size = formatBytesClient(g.sizeOnDisk);
+    const ok = await openConfirm({
+      title: t('xrayUninstallTitle', { name: g.name }),
+      bodyHtml: escapeHtml(t('xrayUninstallBody', { name: g.name, size })),
+      confirmLabel: t('xrayOpenSteam'),
+      tone: 'danger',
+    });
+    if (ok) post('/api/xray/steam/uninstall', { appid: g.appid }).catch(() => {});
+  }
+
+  async function guideMove(g) {
+    const size = formatBytesClient(g.sizeOnDisk);
+    // margem de 10% para o Steam conseguir copiar
+    const targets = (S.data?.drives || []).filter(
+      (v) => v.id !== g.drive && v.freeBytes > g.sizeOnDisk * 1.1
+    );
+    let body;
+    if (targets.length) {
+      body = `<p>${escapeHtml(t('xrayMoveIntro'))}</p><div class="move-drives">${targets
+        .map(
+          (v) =>
+            `<span><strong style="color:var(--text)">${escapeHtml(
+              t('xrayDriveFree', { drive: v.label, free: formatBytesClient(v.freeBytes) })
+            )}</strong> · ${escapeHtml(v.hasLibrary ? t('xrayMoveHasLib') : t('xrayMoveNoLib'))}</span>`
+        )
+        .join('')}</div><p>${escapeHtml(t('xrayMoveSteps'))}</p>`;
+    } else {
+      body = `<p style="color:var(--warn)">${escapeHtml(t('xrayMoveNoSpace'))}</p>`;
+    }
+    const ok = await openConfirm({
+      title: t('xrayMoveTitle', { name: g.name, size }),
+      bodyHtml: body,
+      confirmLabel: t('xrayOpenSteam'),
+    });
+    if (ok) post('/api/xray/steam/storage').catch(() => {});
+  }
+
+  function renderSteam() {
+    const sec = $('xraySteamSection');
+    const d = S.data;
+    if (!d || !d.installed || !d.games.length) {
+      sec.classList.add('is-hidden');
+      return;
+    }
+    sec.classList.remove('is-hidden');
+    const total = d.games.reduce((sum, g) => sum + g.sizeOnDisk, 0);
+    $('xraySteamHint').textContent = t('xraySteamHint', { n: d.games.length, size: formatBytesClient(total) });
+    for (const b of document.querySelectorAll('#xraySteamSort button')) {
+      b.classList.toggle('active', b.dataset.sort === S.sort);
+    }
+    const games = [...d.games].sort((a, b) =>
+      S.sort === 'played' ? (a.lastPlayed || 0) - (b.lastPlayed || 0) : b.sizeOnDisk - a.sizeOnDisk
+    );
+    const list = $('xraySteamList');
+    list.innerHTML = '';
+    for (const g of games) {
+      const el = document.createElement('div');
+      el.className = 'game-row';
+      el.innerHTML = `
+        <div style="min-width:0">
+          <strong title="${escapeHtml(g.name)}">${escapeHtml(g.name)}</strong>
+          <span class="game-meta">${escapeHtml(playedLabel(g.lastPlayed))}${g.drive ? ` · ${escapeHtml(g.drive)}` : ''}</span>
+        </div>
+        <span class="game-size">${g.sizeOnDisk ? formatBytesClient(g.sizeOnDisk) : '—'}</span>
+        <div class="game-actions"></div>
+      `;
+      const actions = el.querySelector('.game-actions');
+      const add = (label, cls, fn) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = `btn-link ${cls}`;
+        b.textContent = label;
+        b.addEventListener('click', fn);
+        actions.appendChild(b);
+      };
+      add(t('xrayUninstall'), 'danger', () => confirmUninstall(g));
+      add(t('xrayMove'), '', () => guideMove(g));
+      if (g.installDir) add(t('xrayReveal'), '', () => reveal(g.installDir));
+      list.appendChild(el);
+    }
+  }
+
+  for (const b of document.querySelectorAll('#xraySteamSort button')) {
+    b.addEventListener('click', () => {
+      S.sort = b.dataset.sort;
+      renderSteam();
+    });
+  }
+
   function applyXrayI18n() {
     $('tabClean').textContent = t('tabClean');
     $('tabXray').textContent = t('tabXray');
     $('xrayMapTitle').textContent = t('xrayMapTitle');
     $('xrayMapHint').textContent = t('xrayMapHint');
     $('xrayLblTotal').textContent = t('xrayLblTotal');
+    $('xraySteamTitle').textContent = t('xraySteamTitle');
+    $('xraySortSize').textContent = t('xraySortSize');
+    $('xraySortPlayed').textContent = t('xraySortPlayed');
     renderAside();
     renderMap();
+    renderSteam();
     window.dispatchEvent(new Event('turbospace-xray-i18n'));
   }
   window.applyXrayI18n = applyXrayI18n;
@@ -320,7 +450,10 @@
   for (const b of document.querySelectorAll('#mainTabs .tab')) {
     b.addEventListener('click', () => setTab(b.dataset.tab));
   }
-  $('btnXrayScan').addEventListener('click', () => scan());
+  $('btnXrayScan').addEventListener('click', () => {
+    scan();
+    loadSteam();
+  });
   listenProgress();
   applyXrayI18n();
 })();

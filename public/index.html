@@ -775,6 +775,20 @@
     }
     .xray-act:hover { color: var(--accent); background: var(--accent-soft); }
     .xray-empty { font-size: 13px; color: var(--text-secondary); padding: 8px 4px; }
+    .xray-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--bg-elevated); border: 1px solid var(--border); }
+    .xray-seg button { border: 0; background: none; color: var(--text-secondary); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 7px; cursor: pointer; }
+    .xray-seg button.active { background: var(--accent-soft); color: var(--accent); }
+    .game-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+      padding: 9px 10px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elevated);
+    }
+    .game-row + .game-row { margin-top: 6px; }
+    .game-row strong { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .game-meta { font-size: 12px; color: var(--text-secondary); }
+    .game-size { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+    .game-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+    .game-actions .danger { color: var(--danger); }
+    .move-drives { margin: 8px 0; display: flex; flex-direction: column; gap: 4px; }
   </style>
 </head>
 <body class="font-sans antialiased">
@@ -984,6 +998,24 @@
                   <div id="xrayTools" class="xray-tools"></div>
                   <div id="xrayList" role="list"></div>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="xraySteamSection" class="surface rounded-2xl panel-block is-open is-hidden">
+            <div class="panel-head">
+              <span class="acc-title">
+                <strong id="xraySteamTitle">Jogos do Steam</strong>
+                <span id="xraySteamHint"></span>
+              </span>
+              <div class="xray-seg" role="group" id="xraySteamSort">
+                <button type="button" data-sort="size" class="active" id="xraySortSize">Maiores</button>
+                <button type="button" data-sort="played" id="xraySortPlayed">Menos jogados</button>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="panel-body-inner">
+                <div class="panel-body-scroll" id="xraySteamList"></div>
               </div>
             </div>
           </section>
