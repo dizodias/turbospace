@@ -30,6 +30,8 @@ import {
   listLargeDesktopFiles,
 } from './cleaners/targets/desktop.mjs';
 import { defaultStaleRoots, deleteStale, scanStale } from './cleaners/targets/stale.mjs';
+import { scanDisk } from './cleaners/xray/scan.mjs';
+import { revealPath } from './cleaners/xray/reveal.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -73,6 +75,8 @@ const state = {
   status: 'idle', // idle | analyzing | cleaning | ok | error
   lastMessage: 'Aguardando',
   busy: false,
+  /** Raio-X roda separado da limpeza (só leitura). */
+  xrayBusy: false,
   volume: defaultVolumeId(),
   /** @deprecated use volume */
   get drive() {
@@ -418,6 +422,65 @@ const server = http.createServer(async (req, res) => {
     } finally {
       state.busy = false;
     }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/xray/scan') {
+    if (state.xrayBusy) {
+      res.writeHead(409, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'Raio-X já em andamento' }));
+      return;
+    }
+    let body;
+    try {
+      body = await readBody(req);
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'JSON inválido' }));
+      return;
+    }
+    const root =
+      typeof body.path === 'string' && body.path.trim()
+        ? body.path.trim()
+        : process.platform === 'win32'
+          ? `${normalizeVolume(state.volume)}\\`
+          : userPaths().home;
+    state.xrayBusy = true;
+    logLine('—');
+    logLine(`Raio-X: mapeando ${root}...`);
+    try {
+      const result = await scanDisk(root, {
+        minBytes: Number(body.minBytes) || undefined,
+        onProgress: (p) => broadcast('xray-progress', { root, ...p }),
+        onLog: logLine,
+      });
+      logLine(
+        `Raio-X: ${formatBytes(result.tree.s)} em ${result.tree.f} arquivos (${(result.elapsedMs / 1000).toFixed(1)} s)` +
+          (result.tree.e ? `, ${result.tree.e} pasta(s) sem acesso` : '')
+      );
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, ...result }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logLine(`ERRO no Raio-X: ${msg}`, 'stderr');
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    } finally {
+      state.xrayBusy = false;
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/xray/reveal') {
+    let body;
+    try {
+      body = await readBody(req);
+    } catch {
+      body = {};
+    }
+    const ok = typeof body.path === 'string' && revealPath(body.path);
+    res.writeHead(ok ? 200 : 400, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok }));
     return;
   }
 
