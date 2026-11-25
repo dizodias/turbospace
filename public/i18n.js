@@ -266,6 +266,22 @@ window.TurboI18n = (function () {
       staleConfirmBody: 'Serão excluídos {files} arquivo(s) e {full} repositório(s) inteiro(s), e removidas dependências/builds de {art} repositório(s): ~{size}. Isso não vai para a Lixeira e não pode ser desfeito.',
       staleConfirmRisk: '{n} repositório(s) marcado(s) para exclusão inteira têm trabalho não enviado.',
       staleConfirmBtn: 'Excluir',
+      tabClean: 'Limpeza',
+      tabXray: 'Raio-X',
+      xrayMapTitle: 'Mapa do disco',
+      xrayMapHint: 'O que mais ocupa espaço. Clique numa pasta para abrir',
+      xrayIdle: 'Clique em Mapear para ver o que ocupa espaço.',
+      xrayScanBtn: 'Mapear disco {drive}',
+      xrayRescanBtn: 'Mapear de novo',
+      xrayScanning: 'Mapeando... {dirs} pastas, {size}',
+      xrayDone: '{files} arquivos em {secs} s',
+      xrayDenied: '{n} pasta(s) sem acesso',
+      xrayLblTotal: 'Espaço mapeado',
+      xrayOther: 'Itens menores agrupados',
+      xrayDeeper: 'Detalhar esta pasta',
+      xrayReveal: 'Mostrar no Explorer',
+      xrayEmptyDir: 'Nada grande aqui: tudo está em itens menores.',
+      xrayError: 'Falha ao mapear: {msg}',
       groups: {
         temp: {
           title: 'Arquivos temporários',
@@ -539,6 +555,22 @@ window.TurboI18n = (function () {
       staleConfirmBody: '{files} file(s) and {full} entire repository(ies) will be deleted, and dependencies/builds removed from {art} repository(ies): ~{size}. This does not go to the Recycle Bin and cannot be undone.',
       staleConfirmRisk: '{n} repository(ies) marked for full deletion have unpushed work.',
       staleConfirmBtn: 'Delete',
+      tabClean: 'Cleanup',
+      tabXray: 'X-Ray',
+      xrayMapTitle: 'Disk map',
+      xrayMapHint: 'What takes the most space. Click a folder to open it',
+      xrayIdle: 'Click Map to see what takes up space.',
+      xrayScanBtn: 'Map drive {drive}',
+      xrayRescanBtn: 'Map again',
+      xrayScanning: 'Mapping... {dirs} folders, {size}',
+      xrayDone: '{files} files in {secs} s',
+      xrayDenied: '{n} folder(s) without access',
+      xrayLblTotal: 'Mapped space',
+      xrayOther: 'Smaller items grouped',
+      xrayDeeper: 'Detail this folder',
+      xrayReveal: 'Show in Explorer',
+      xrayEmptyDir: 'Nothing big here: everything is in smaller items.',
+      xrayError: 'Mapping failed: {msg}',
       groups: {
         temp: {
           title: 'Temporary files',
@@ -698,6 +730,8 @@ window.TurboI18n = (function () {
   const PLATFORM_OVERLAYS = {
     'pt-BR': {
       darwin: {
+        xrayScanBtn: 'Mapear sua pasta pessoal',
+        xrayReveal: 'Mostrar no Finder',
         freeSpace: 'Espaço livre em {drive}',
         gpu: 'Gráficos',
         largeFilesTitle: 'Arquivos grandes na Mesa',
@@ -755,6 +789,8 @@ window.TurboI18n = (function () {
     },
     'en-US': {
       darwin: {
+        xrayScanBtn: 'Map your home folder',
+        xrayReveal: 'Show in Finder',
         freeSpace: 'Free space on {drive}',
         gpu: 'Graphics',
         bootDriveTitle: 'Choose a volume',
