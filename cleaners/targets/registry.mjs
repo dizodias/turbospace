@@ -11,11 +11,13 @@ import {
 import { cleanRecycleBin, cleanTrash, measureTrash } from './trash.mjs';
 import { cleanBrowserCache, measureBrowserCache } from './browsers.mjs';
 import {
+  cleanAppUpdaters,
   cleanCrashDumpsWin,
   cleanDeliveryOpt,
   cleanShaderCache,
   cleanThumbnails,
   cleanUpdateCache,
+  measureAppUpdaters,
   measureCrashDumpsWin,
   measureDeliveryOpt,
   measureShaderCache,
@@ -119,6 +121,13 @@ export const TARGETS = [
     group: 'system',
     measure: measureDeliveryOpt,
     clean: cleanDeliveryOpt,
+  },
+  {
+    id: 'appUpdaters',
+    platforms: ['win32'],
+    group: 'system',
+    measure: measureAppUpdaters,
+    clean: cleanAppUpdaters,
   },
   {
     id: 'crashDumps',
@@ -286,6 +295,7 @@ export async function analyzeSelected(selectedIds, onLog) {
     'thumbnails',
     'updateCache',
     'deliveryOpt',
+    'appUpdaters',
     'crashDumps',
     'browserCache',
     'shaderCache',

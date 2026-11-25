@@ -75,6 +75,50 @@ function crashDumpPaths() {
   ];
 }
 
+/** Já limpos por outro alvo (aiCursor): ficam de fora para não contar duas vezes. */
+const UPDATER_COVERED_ELSEWHERE = new Set(['cursor-updater']);
+
+/** Pastas <app>-updater do electron-updater: guardam só instaladores baixados. */
+async function appUpdaterPaths() {
+  const root = userPaths().appUpdaterRoot;
+  if (!root || !fs.existsSync(root)) return [];
+  try {
+    const entries = await fsp.readdir(root, { withFileTypes: true });
+    return entries
+      .filter((e) => e.isDirectory() && /-updater$/i.test(e.name))
+      .filter((e) => !UPDATER_COVERED_ELSEWHERE.has(e.name.toLowerCase()))
+      .map((e) => path.join(root, e.name));
+  } catch {
+    return [];
+  }
+}
+
+export async function measureAppUpdaters() {
+  return sumPaths(await appUpdaterPaths());
+}
+
+export async function cleanAppUpdaters(onLog) {
+  const paths = await appUpdaterPaths();
+  if (!paths.length) {
+    onLog('Nenhuma pasta *-updater encontrada');
+    return { id: 'appUpdaters', ok: true, freedBytesApprox: 0, detail: 'Atualizadores de apps ~0 B' };
+  }
+  onLog(`Limpando instaladores baixados por ${paths.length} app(s) Electron...`);
+  let freed = 0;
+  let inUse = 0;
+  for (const p of paths) {
+    const r = await emptyDirContentsDetailed(p, onLog);
+    freed += r.freed;
+    inUse += r.inUse;
+  }
+  return {
+    id: 'appUpdaters',
+    ok: true,
+    freedBytesApprox: freed,
+    detail: `Atualizadores de apps ~${formatBytes(freed)}${inUseNote(inUse)}`,
+  };
+}
+
 export async function measureThumbnailsSize() {
   return measureThumbnails();
 }

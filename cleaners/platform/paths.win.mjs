@@ -54,6 +54,8 @@ export function userPaths() {
       path.join(home, '.cache', 'puppeteer'),
       path.join(local, 'ms-playwright'),
     ],
+    /** Pasta onde apps Electron (electron-updater) criam <app>-updater com instaladores baixados. */
+    appUpdaterRoot: local,
     steamDefault: path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'),
   };
 }

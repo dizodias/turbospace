@@ -47,6 +47,7 @@ export function userPaths() {
       path.join(home, '.cache', 'puppeteer'),
       path.join(libraryCaches, 'ms-playwright'),
     ],
+    appUpdaterRoot: null,
     steamDefault: null,
   };
 }

@@ -307,6 +307,10 @@ window.TurboI18n = (function () {
               label: 'Cache de atualizações em rede',
               hint: 'Arquivos da Otimização de Entrega usados para compartilhar updates',
             },
+            appUpdaters: {
+              label: 'Instaladores de atualização de apps',
+              hint: 'Pastas *-updater de apps Electron (Gather, Hydra, Pinokio etc.) com instaladores já baixados',
+            },
             crashDumps: {
               label: 'Relatórios de falhas',
               hint: 'Minidumps e Relatórios de Erros do Windows (WER)',
@@ -564,6 +568,10 @@ window.TurboI18n = (function () {
               label: 'Delivery Optimization cache',
               hint: 'Files used to share updates on the network',
             },
+            appUpdaters: {
+              label: 'App update installers',
+              hint: '*-updater folders of Electron apps (Gather, Hydra, Pinokio, etc.) holding already downloaded installers',
+            },
             crashDumps: {
               label: 'Crash reports',
               hint: 'Windows minidumps and Error Reporting (WER) files',
@@ -777,6 +785,7 @@ window.TurboI18n = (function () {
         'thumbnails',
         'updateCache',
         'deliveryOpt',
+        'appUpdaters',
         'crashDumps',
         'browserCache',
         'shaderCache',
