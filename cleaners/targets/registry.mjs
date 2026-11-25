@@ -35,8 +35,10 @@ import {
 import { cleanDocker, measureDocker } from './docker.mjs';
 import {
   cleanAndroid,
+  cleanAndroidEmulator,
   cleanGradle,
   measureAndroid,
+  measureAndroidEmulator,
   measureGradle,
 } from './gradle-android.mjs';
 import { cleanNpm, cleanPip, measureNpm, measurePip } from './npm-pip.mjs';
@@ -191,6 +193,13 @@ export const TARGETS = [
     clean: cleanAndroid,
   },
   {
+    id: 'androidEmulator',
+    platforms: ['win32', 'darwin'],
+    group: 'dev',
+    measure: measureAndroidEmulator,
+    clean: cleanAndroidEmulator,
+  },
+  {
     id: 'npm',
     platforms: ['win32', 'darwin'],
     group: 'dev',
@@ -274,7 +283,7 @@ export function groupsFor(platform = process.platform) {
     items: byGroup.get(id),
     open: id === 'temp',
     largeFiles: id === 'desktop',
-    warn: id === 'dev' ? { docker: true } : undefined,
+    warn: id === 'dev' ? { docker: true, androidEmulator: true } : undefined,
   }));
 }
 
@@ -310,7 +319,7 @@ export async function analyzeSelected(selectedIds, onLog) {
   }
 
   if (selected.has('docker')) onLog?.('Verificando limpeza de containers...');
-  if (selected.has('gradle') || selected.has('android') || selected.has('xcodeDerivedData')) {
+  if (['gradle', 'android', 'androidEmulator', 'xcodeDerivedData'].some((id) => selected.has(id))) {
     onLog?.('Medindo caches de desenvolvimento...');
   }
   if (selected.has('npm') || selected.has('pip')) onLog?.('Medindo caches de pacotes...');

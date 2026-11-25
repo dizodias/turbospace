@@ -346,6 +346,11 @@ window.TurboI18n = (function () {
               label: 'Cache do Android Studio',
               hint: 'Caches do SDK Android',
             },
+            androidEmulator: {
+              label: 'Snapshots e imagens do emulador Android',
+              hint: 'Quick boot (snapshots/default_boot) de cada AVD e system-images que nenhum AVD usa',
+              caution: 'Os AVDs continuam funcionando, mas o próximo boot é completo (mais lento). Pulado se o emulador estiver aberto',
+            },
             npm: {
               label: 'Cache de pacotes JavaScript',
               hint: 'Cache do gerenciador de pacotes Node',
@@ -607,6 +612,11 @@ window.TurboI18n = (function () {
               label: 'Android Studio cache',
               hint: 'Android SDK caches',
             },
+            androidEmulator: {
+              label: 'Android emulator snapshots and images',
+              hint: 'Quick boot (snapshots/default_boot) of each AVD and system images no AVD uses',
+              caution: 'AVDs keep working, but the next boot is a cold boot (slower). Skipped while the emulator is open',
+            },
             npm: {
               label: 'JavaScript package cache',
               hint: 'Node package manager cache',
@@ -795,8 +805,8 @@ window.TurboI18n = (function () {
     {
       id: 'dev',
       open: false,
-      items: ['xcodeDerivedData', 'gradle', 'android', 'npm', 'pip', 'docker'],
-      warn: { docker: true },
+      items: ['xcodeDerivedData', 'gradle', 'android', 'androidEmulator', 'npm', 'pip', 'docker'],
+      warn: { docker: true, androidEmulator: true },
     },
     { id: 'ai', open: false, items: ['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents', 'aiModels'] },
     { id: 'desktop', open: false, items: ['desktopJunk'], largeFiles: true },
@@ -804,7 +814,7 @@ window.TurboI18n = (function () {
   ];
 
   /** Alvos que nunca vêm marcados por padrão (o usuário precisa escolher). */
-  const UNCHECKED_BY_DEFAULT = new Set(['docker', 'aiModels']);
+  const UNCHECKED_BY_DEFAULT = new Set(['docker', 'aiModels', 'androidEmulator']);
 
   function deepMerge(base, overlay) {
     if (!overlay || typeof overlay !== 'object') return base;

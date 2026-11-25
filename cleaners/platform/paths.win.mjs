@@ -24,6 +24,7 @@ export function userPaths() {
     xcodeDerivedData: null,
     gradleCaches: path.join(home, '.gradle', 'caches'),
     androidSdk: path.join(local, 'Android', 'Sdk'),
+    androidAvdHome: process.env.ANDROID_AVD_HOME || path.join(home, '.android', 'avd'),
     npmCache: path.join(local, 'npm-cache'),
     pipCache: path.join(local, 'pip', 'Cache'),
     browsers: {
