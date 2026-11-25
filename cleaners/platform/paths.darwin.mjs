@@ -41,6 +41,12 @@ export function userPaths() {
       'com.apple.dt.Xcode',
     ],
     shaderCaches: [],
+    aiModelCaches: [
+      path.join(home, '.cache', 'huggingface', 'hub'),
+      path.join(home, '.cache', 'whisper'),
+      path.join(home, '.cache', 'puppeteer'),
+      path.join(libraryCaches, 'ms-playwright'),
+    ],
     steamDefault: null,
   };
 }

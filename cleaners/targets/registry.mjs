@@ -44,10 +44,12 @@ import {
   cleanAiClaude,
   cleanAiCursor,
   cleanAiEditors,
+  cleanAiModels,
   measureAiAgents,
   measureAiClaude,
   measureAiCursor,
   measureAiEditors,
+  measureAiModels,
 } from './ai-tools.mjs';
 
 /**
@@ -222,6 +224,13 @@ export const TARGETS = [
     clean: cleanAiAgents,
   },
   {
+    id: 'aiModels',
+    platforms: ['win32', 'darwin'],
+    group: 'ai',
+    measure: measureAiModels,
+    clean: cleanAiModels,
+  },
+  {
     id: 'desktopJunk',
     platforms: ['win32', 'darwin'],
     group: 'desktop',
@@ -295,7 +304,7 @@ export async function analyzeSelected(selectedIds, onLog) {
     onLog?.('Medindo caches de desenvolvimento...');
   }
   if (selected.has('npm') || selected.has('pip')) onLog?.('Medindo caches de pacotes...');
-  if (['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents'].some((id) => selected.has(id))) {
+  if (['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents', 'aiModels'].some((id) => selected.has(id))) {
     onLog?.('Medindo caches de ferramentas de IA...');
   }
   if (selected.has('desktopJunk')) onLog?.(`Medindo resíduos na ${desktopLabel()}...`);

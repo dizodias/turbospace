@@ -47,6 +47,13 @@ export function userPaths() {
       path.join(local, 'AMD', 'GLCache'),
       path.join(local, 'Intel', 'ShaderCache'),
     ],
+    /** Modelos/binários baixados por ferramentas de IA e automação (rebaixados sob demanda). */
+    aiModelCaches: [
+      path.join(home, '.cache', 'huggingface', 'hub'),
+      path.join(home, '.cache', 'whisper'),
+      path.join(home, '.cache', 'puppeteer'),
+      path.join(local, 'ms-playwright'),
+    ],
     steamDefault: path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'),
   };
 }

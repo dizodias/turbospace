@@ -1,7 +1,13 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { dirSize, emptyDirContents, formatBytes, userPaths } from '../measure.mjs';
+import {
+  dirSize,
+  emptyDirContentsDetailed,
+  formatBytes,
+  inUseNote,
+  userPaths,
+} from '../measure.mjs';
 
 /**
  * Caches regeneráveis de ferramentas de IA (editores, apps desktop, CLIs e
@@ -13,6 +19,10 @@ import { dirSize, emptyDirContents, formatBytes, userPaths } from '../measure.mj
  * Cursor/User/globalStorage/state.vscdb (chats do Cursor), ~/.claude/projects
  * (sessões do Claude Code) e %LOCALAPPDATA%/Claude-Data (dados do Claude, cujo
  * README pede para não apagar).
+ *
+ * Exceção: o alvo aiModels apaga modelos e navegadores baixados (Hugging Face,
+ * Whisper, Puppeteer, Playwright). Vem desmarcado por padrão porque as
+ * ferramentas baixam tudo de novo quando precisarem.
  */
 
 /** Subpastas de cache do Chromium/Electron que o app recria sozinho. */
@@ -158,6 +168,10 @@ async function agentPaths() {
   return existing(out);
 }
 
+async function modelPaths() {
+  return existing(userPaths().aiModelCaches || []);
+}
+
 /** Remove caminhos que estão dentro de outro já listado (evita contar 2x). */
 function dedupeNested(paths) {
   const sorted = [...new Set(paths.map((p) => path.resolve(p)))].sort(
@@ -185,12 +199,17 @@ function makeCleaner(id, label, resolver) {
       return { id, ok: true, freedBytesApprox: 0, detail: `${label}: nada a limpar` };
     }
     let freed = 0;
-    for (const p of paths) freed += await emptyDirContents(p, onLog);
+    let inUse = 0;
+    for (const p of paths) {
+      const r = await emptyDirContentsDetailed(p, onLog);
+      freed += r.freed;
+      inUse += r.inUse;
+    }
     return {
       id,
       ok: true,
       freedBytesApprox: freed,
-      detail: `${label} ~${formatBytes(freed)} (feche o app para liberar arquivos em uso)`,
+      detail: `${label} ~${formatBytes(freed)}${inUseNote(inUse)}`,
     };
   };
 }
@@ -199,8 +218,10 @@ export const measureAiCursor = () => measurePaths(cursorPaths);
 export const measureAiClaude = () => measurePaths(claudePaths);
 export const measureAiEditors = () => measurePaths(editorPaths);
 export const measureAiAgents = () => measurePaths(agentPaths);
+export const measureAiModels = () => measurePaths(modelPaths);
 
 export const cleanAiCursor = makeCleaner('aiCursor', 'Cursor', cursorPaths);
 export const cleanAiClaude = makeCleaner('aiClaude', 'Claude', claudePaths);
 export const cleanAiEditors = makeCleaner('aiEditors', 'Editores com IA', editorPaths);
 export const cleanAiAgents = makeCleaner('aiAgents', 'Agentes e CLIs de IA', agentPaths);
+export const cleanAiModels = makeCleaner('aiModels', 'Modelos de IA locais', modelPaths);

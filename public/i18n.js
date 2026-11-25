@@ -376,6 +376,11 @@ window.TurboI18n = (function () {
               label: 'Agentes e CLIs de IA',
               hint: 'Cache dos navegadores do Playwright MCP e do Gemini/Antigravity, logs do Codex',
             },
+            aiModels: {
+              label: 'Modelos de IA locais',
+              hint: 'Hugging Face (hub), Whisper, Puppeteer e navegadores do Playwright',
+              caution: 'Serão baixados de novo quando alguma ferramenta precisar',
+            },
           },
         },
         old: {
@@ -628,6 +633,11 @@ window.TurboI18n = (function () {
               label: 'AI agents and CLIs',
               hint: 'Playwright MCP and Gemini/Antigravity browser caches, Codex logs',
             },
+            aiModels: {
+              label: 'Local AI models',
+              hint: 'Hugging Face (hub), Whisper, Puppeteer and Playwright browsers',
+              caution: 'They will be downloaded again when a tool needs them',
+            },
           },
         },
         old: {
@@ -779,10 +789,13 @@ window.TurboI18n = (function () {
       items: ['xcodeDerivedData', 'gradle', 'android', 'npm', 'pip', 'docker'],
       warn: { docker: true },
     },
-    { id: 'ai', open: false, items: ['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents'] },
+    { id: 'ai', open: false, items: ['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents', 'aiModels'] },
     { id: 'desktop', open: false, items: ['desktopJunk'], largeFiles: true },
     { id: 'old', open: false, items: [], stale: true },
   ];
+
+  /** Alvos que nunca vêm marcados por padrão (o usuário precisa escolher). */
+  const UNCHECKED_BY_DEFAULT = new Set(['docker', 'aiModels']);
 
   function deepMerge(base, overlay) {
     if (!overlay || typeof overlay !== 'object') return base;
@@ -878,7 +891,7 @@ window.TurboI18n = (function () {
           hint: src.items[id].hint,
           tip: src.items[id].tip || '',
           caution: src.items[id].caution || '',
-          safe: id !== 'docker',
+          safe: !UNCHECKED_BY_DEFAULT.has(id),
           warn: !!(meta.warn && meta.warn[id]),
         }));
       if (!items.length && !meta.stale) return null;
