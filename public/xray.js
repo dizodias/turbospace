@@ -64,6 +64,7 @@
     }
     if (X.tab === 'xray' && !X.scannedOnce && !X.scanning) scan();
     if (X.tab === 'xray' && !S.loaded) loadSteam();
+    if (X.tab === 'xray' && !T.loaded) loadTips();
     window.dispatchEvent(new CustomEvent('turbospace-tab', { detail: X.tab }));
   }
 
@@ -429,6 +430,122 @@
     });
   }
 
+  /* ---------- dicas ---------- */
+
+  const T = { tips: null, loaded: false, dism: { running: false, result: null } };
+  X.tipsState = T;
+
+  async function loadTips() {
+    try {
+      const r = await fetch('/api/xray/tips').then((res) => res.json());
+      T.tips = r.ok ? r.tips : [];
+    } catch {
+      T.tips = [];
+    } finally {
+      T.loaded = true;
+      renderTips();
+    }
+  }
+
+  async function runDism() {
+    const ok = await openConfirm({
+      title: t('tipDismConfirmTitle'),
+      bodyHtml: escapeHtml(t('tipDismConfirmBody')),
+      confirmLabel: t('tipDismRun'),
+    });
+    if (!ok) return;
+    T.dism = { running: true, result: null };
+    renderTips();
+    try {
+      const r = await post('/api/xray/dism');
+      T.dism.result = r.ok
+        ? { ok: true, text: t('tipDismDone', { size: formatBytesClient(r.freedBytes) }) }
+        : { ok: false, text: t('tipDismFailed', { msg: r.detail || r.error || '?' }) };
+    } catch (err) {
+      T.dism.result = { ok: false, text: t('tipDismFailed', { msg: err.message }) };
+    } finally {
+      T.dism.running = false;
+      renderTips();
+    }
+  }
+
+  function tipCard(title, body) {
+    const card = document.createElement('div');
+    card.className = 'tip-card';
+    const s = document.createElement('strong');
+    s.textContent = title;
+    const p = document.createElement('p');
+    p.textContent = body;
+    card.append(s, p);
+    return card;
+  }
+
+  function renderTips() {
+    const box = $('xrayTips');
+    box.innerHTML = '';
+    const tips = T.tips || [];
+    if (!tips.length) return;
+    const head = document.createElement('span');
+    head.className = 'label-caps';
+    head.textContent = t('xrayTipsTitle');
+    box.appendChild(head);
+    for (const tip of tips) {
+      if (tip.id === 'nvidia') {
+        box.appendChild(
+          tipCard(t('tipNvidiaTitle'), t('tipNvidiaBody', { size: formatBytesClient(tip.cacheBytes) }))
+        );
+      } else if (tip.id === 'dism') {
+        const card = tipCard(t('tipDismTitle'), t('tipDismBody'));
+        const actions = document.createElement('div');
+        actions.className = 'tip-actions';
+        if (tip.admin) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn-primary btn-sm';
+          b.textContent = t('tipDismRun');
+          b.disabled = T.dism.running;
+          b.addEventListener('click', runDism);
+          actions.appendChild(b);
+        }
+        const note = document.createElement('span');
+        note.className = 'tip-note';
+        if (T.dism.running) note.textContent = t('tipDismRunning');
+        else if (T.dism.result) {
+          note.textContent = T.dism.result.text;
+          note.style.color = T.dism.result.ok ? 'var(--success)' : 'var(--danger)';
+        } else if (!tip.admin) note.textContent = t('tipDismNeedAdmin');
+        if (note.textContent) actions.appendChild(note);
+        card.appendChild(actions);
+        box.appendChild(card);
+      } else if (tip.id === 'hiberfil') {
+        const card = tipCard(
+          t('tipHiberTitle'),
+          t('tipHiberBody', { size: formatBytesClient(tip.bytes), drive: tip.drive })
+        );
+        const code = document.createElement('code');
+        code.textContent = 'powercfg /h off';
+        const actions = document.createElement('div');
+        actions.className = 'tip-actions';
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn-link';
+        b.textContent = t('tipCopy');
+        b.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText('powercfg /h off');
+            b.textContent = t('tipCopied');
+            setTimeout(() => (b.textContent = t('tipCopy')), 1500);
+          } catch {
+            // sem clipboard: o comando continua visível no card
+          }
+        });
+        actions.appendChild(b);
+        card.append(code, actions);
+        box.appendChild(card);
+      }
+    }
+  }
+
   function applyXrayI18n() {
     $('tabClean').textContent = t('tabClean');
     $('tabXray').textContent = t('tabXray');
@@ -441,6 +558,7 @@
     renderAside();
     renderMap();
     renderSteam();
+    renderTips();
     window.dispatchEvent(new Event('turbospace-xray-i18n'));
   }
   window.applyXrayI18n = applyXrayI18n;

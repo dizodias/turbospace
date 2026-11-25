@@ -37,6 +37,7 @@ import {
   openSteamStorage,
   openSteamUninstall,
 } from './cleaners/xray/steam-games.mjs';
+import { runDismCleanup, systemTips } from './cleaners/xray/tips.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -507,6 +508,44 @@ const server = http.createServer(async (req, res) => {
     const ok = openSteamStorage();
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ ok }));
+    return;
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/xray/tips') {
+    try {
+      const result = await systemTips();
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: true, ...result }));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && url.pathname === '/api/xray/dism') {
+    if (state.busy) {
+      res.writeHead(409, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: 'Operação em andamento' }));
+      return;
+    }
+    state.busy = true;
+    setStatus('cleaning', 'Limpando componentes do Windows (DISM)...');
+    logLine('—');
+    try {
+      const result = await runDismCleanup(logLine);
+      setStatus(result.ok ? 'ok' : 'error', result.detail);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logLine(`ERRO no DISM: ${msg}`, 'stderr');
+      setStatus('error', 'Falha no DISM');
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: msg }));
+    } finally {
+      state.busy = false;
+    }
     return;
   }
 
