@@ -35,6 +35,18 @@ export function userPaths() {
       firefoxProfiles: path.join(local, 'Mozilla', 'Firefox', 'Profiles'),
     },
     appCacheAllowlist: [],
-    shaderCache: path.join(local, 'D3DSCache'),
+    /** Caches de shaders de GPU (DirectX, NVIDIA, AMD, Intel); o Steam é resolvido em steam.win.mjs. */
+    shaderCaches: [
+      path.join(local, 'D3DSCache'),
+      path.join(local, 'NVIDIA', 'DXCache'),
+      path.join(local, 'NVIDIA', 'GLCache'),
+      path.join(home, 'AppData', 'LocalLow', 'NVIDIA', 'DXCache'),
+      path.join(local, 'AMD', 'DxCache'),
+      path.join(local, 'AMD', 'DxcCache'),
+      path.join(local, 'AMD', 'VkCache'),
+      path.join(local, 'AMD', 'GLCache'),
+      path.join(local, 'Intel', 'ShaderCache'),
+    ],
+    steamDefault: path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'),
   };
 }

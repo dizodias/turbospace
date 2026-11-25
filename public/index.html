@@ -1563,6 +1563,8 @@
             <span class="min-w-0 flex-1">
               <span class="block text-sm font-semibold">${tgt.label}${tgt.warn ? ` <span class="text-xs font-medium" style="color:var(--warn)">${t('attention')}</span>` : ''}</span>
               <span class="block text-xs muted mt-0.5">${tgt.hint}</span>
+              ${tgt.caution ? `<span class="block text-xs mt-0.5" style="color:var(--warn)">${tgt.caution}</span>` : ''}
+              ${tgt.tip ? `<span class="block text-xs mt-0.5" style="color:var(--accent)"><strong>${t('tipPrefix')}</strong> ${tgt.tip}</span>` : ''}
               <span class="block text-xs muted mt-0.5" data-size-for="${tgt.id}"></span>
             </span>
           `;

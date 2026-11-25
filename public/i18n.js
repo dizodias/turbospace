@@ -191,6 +191,7 @@ window.TurboI18n = (function () {
       selectedOne: '1 selecionado',
       selectedMany: '{n} selecionados',
       attention: 'atenção',
+      tipPrefix: 'Dica:',
       largeFilesTitle: 'Arquivos grandes na Área de Trabalho',
       refresh: 'Atualizar',
       loading: 'Carregando...',
@@ -316,7 +317,8 @@ window.TurboI18n = (function () {
             },
             shaderCache: {
               label: 'Cache de gráficos/jogos',
-              hint: 'Shaders do DirectX; jogos recriam na próxima execução',
+              hint: 'Shaders do DirectX, NVIDIA, AMD, Intel e Steam; jogos recriam na próxima execução',
+              tip: 'Limite o cache no Painel NVIDIA (Tamanho do cache do sombreador = 10 GB), senão ele volta a crescer',
             },
             appCaches: {
               label: 'Caches de apps',
@@ -441,6 +443,7 @@ window.TurboI18n = (function () {
       selectedOne: '1 selected',
       selectedMany: '{n} selected',
       attention: 'caution',
+      tipPrefix: 'Tip:',
       largeFilesTitle: 'Large files on the Desktop',
       refresh: 'Refresh',
       loading: 'Loading...',
@@ -566,7 +569,8 @@ window.TurboI18n = (function () {
             },
             shaderCache: {
               label: 'Graphics/game cache',
-              hint: 'DirectX shaders; games recreate them next launch',
+              hint: 'DirectX, NVIDIA, AMD, Intel and Steam shaders; games recreate them next launch',
+              tip: 'Cap the cache in the NVIDIA Control Panel (Shader Cache Size = 10 GB), otherwise it grows back',
             },
             appCaches: {
               label: 'App caches',
@@ -872,6 +876,8 @@ window.TurboI18n = (function () {
           id,
           label: src.items[id].label,
           hint: src.items[id].hint,
+          tip: src.items[id].tip || '',
+          caution: src.items[id].caution || '',
           safe: id !== 'docker',
           warn: !!(meta.warn && meta.warn[id]),
         }));

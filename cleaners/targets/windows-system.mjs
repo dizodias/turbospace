@@ -4,9 +4,12 @@ import path from 'node:path';
 import {
   dirSize,
   emptyDirContents,
+  emptyDirContentsDetailed,
   formatBytes,
+  inUseNote,
   userPaths,
 } from '../measure.mjs';
+import { steamLibraries } from '../platform/steam.win.mjs';
 
 async function sumPaths(paths) {
   let total = 0;
@@ -88,9 +91,17 @@ export async function measureCrashDumpsWin() {
   return sumPaths(crashDumpPaths());
 }
 
+/** Caches de shaders de GPU + steamapps\shadercache de cada biblioteca do Steam. */
+async function shaderCachePaths() {
+  const out = [...(userPaths().shaderCaches || [])];
+  for (const lib of await steamLibraries()) {
+    out.push(path.join(lib, 'steamapps', 'shadercache'));
+  }
+  return out.filter((p) => fs.existsSync(p));
+}
+
 export async function measureShaderCache() {
-  const target = userPaths().shaderCache;
-  return target ? dirSize(target) : 0;
+  return sumPaths(await shaderCachePaths());
 }
 
 export async function measureWindowsExtras() {
@@ -171,16 +182,23 @@ export async function cleanCrashDumpsWin(onLog) {
 }
 
 export async function cleanShaderCache(onLog) {
-  const target = userPaths().shaderCache;
-  if (!target) {
-    return { id: 'shaderCache', ok: false, freedBytesApprox: 0, detail: 'Não aplicável' };
+  const paths = await shaderCachePaths();
+  if (!paths.length) {
+    onLog('Nenhum cache de shaders encontrado');
+    return { id: 'shaderCache', ok: true, freedBytesApprox: 0, detail: 'Cache de shaders ~0 B' };
   }
-  onLog(`Limpando cache de shaders: ${target}`);
-  const freed = await emptyDirContents(target, onLog);
+  onLog('Limpando caches de shaders (DirectX, NVIDIA, AMD, Intel, Steam)...');
+  let freed = 0;
+  let inUse = 0;
+  for (const p of paths) {
+    const r = await emptyDirContentsDetailed(p, onLog);
+    freed += r.freed;
+    inUse += r.inUse;
+  }
   return {
     id: 'shaderCache',
     ok: true,
     freedBytesApprox: freed,
-    detail: `Cache de shaders ~${formatBytes(freed)}`,
+    detail: `Cache de shaders ~${formatBytes(freed)}${inUseNote(inUse)}`,
   };
 }

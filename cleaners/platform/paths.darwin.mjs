@@ -40,6 +40,7 @@ export function userPaths() {
       'com.microsoft.VSCode',
       'com.apple.dt.Xcode',
     ],
-    shaderCache: null,
+    shaderCaches: [],
+    steamDefault: null,
   };
 }
