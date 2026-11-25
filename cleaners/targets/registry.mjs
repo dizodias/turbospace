@@ -1,5 +1,5 @@
 import { desktopLabel, trashLabel } from '../copy.mjs';
-import { commandExists } from '../measure.mjs';
+import { commandExists, formatBytes } from '../measure.mjs';
 import {
   cleanPrefetch,
   cleanUserTemp,
@@ -32,7 +32,13 @@ import {
   measureDiagnosticReports,
   measureXcodeDerivedData,
 } from './caches.darwin.mjs';
-import { cleanDocker, measureDocker } from './docker.mjs';
+import {
+  cleanDocker,
+  cleanDockerCompact,
+  dockerDiskBytes,
+  measureDocker,
+  measureDockerCompact,
+} from './docker.mjs';
 import {
   cleanAndroid,
   cleanAndroidEmulator,
@@ -174,9 +180,16 @@ export const TARGETS = [
     group: 'dev',
     measure: async () => {
       const info = await measureDocker();
-      return info.available ? null : 0;
+      return { bytes: info.available ? null : 0, diskBytes: info.diskBytes };
     },
     clean: cleanDocker,
+  },
+  {
+    id: 'dockerCompact',
+    platforms: ['win32'],
+    group: 'dev',
+    measure: async () => ({ bytes: await measureDockerCompact(), diskBytes: await dockerDiskBytes() }),
+    clean: cleanDockerCompact,
   },
   {
     id: 'gradle',
@@ -283,7 +296,7 @@ export function groupsFor(platform = process.platform) {
     items: byGroup.get(id),
     open: id === 'temp',
     largeFiles: id === 'desktop',
-    warn: id === 'dev' ? { docker: true, androidEmulator: true } : undefined,
+    warn: id === 'dev' ? { docker: true, dockerCompact: true, androidEmulator: true } : undefined,
   }));
 }
 
@@ -318,7 +331,9 @@ export async function analyzeSelected(selectedIds, onLog) {
     );
   }
 
-  if (selected.has('docker')) onLog?.('Verificando limpeza de containers...');
+  if (selected.has('docker') || selected.has('dockerCompact')) {
+    onLog?.('Verificando limpeza de containers...');
+  }
   if (['gradle', 'android', 'androidEmulator', 'xcodeDerivedData'].some((id) => selected.has(id))) {
     onLog?.('Medindo caches de desenvolvimento...');
   }
@@ -333,15 +348,19 @@ export async function analyzeSelected(selectedIds, onLog) {
     try {
       if (t.id === 'docker') {
         const has = await commandExists('docker');
-        sizes.docker = has ? null : 0;
+        sizes.docker = { bytes: has ? null : 0, diskBytes: await dockerDiskBytes() };
         if (!has) onLog?.('Ambiente de containers não encontrado');
         continue;
       }
+      // number | null, ou { bytes, diskBytes } quando há um tamanho extra para exibir
       sizes[t.id] = await t.measure();
     } catch (err) {
       onLog?.(`Falha ao medir ${t.id}: ${err.message}`);
       sizes[t.id] = 0;
     }
+  }
+  if (sizes.docker?.diskBytes) {
+    onLog?.(`Disco virtual do Docker: ${formatBytes(sizes.docker.diskBytes)}`);
   }
 
   return sizes;

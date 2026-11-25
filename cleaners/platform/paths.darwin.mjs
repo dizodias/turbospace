@@ -49,6 +49,7 @@ export function userPaths() {
       path.join(libraryCaches, 'ms-playwright'),
     ],
     appUpdaterRoot: null,
+    dockerDisks: [],
     steamDefault: null,
   };
 }

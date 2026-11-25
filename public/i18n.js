@@ -197,10 +197,12 @@ window.TurboI18n = (function () {
       loading: 'Carregando...',
       noLargeFiles: 'Nenhum arquivo grande encontrado',
       sizePrefix: 'Tamanho:',
+      dockerDisk: 'disco virtual: {size}',
       reclaimZeroNote: 'Nada mensurável na seleção atual',
       reclaimSelect: 'Selecione o que deseja limpar',
       reclaimVariable: 'Variável',
       reclaimVariableNote: 'Inclui limpeza de containers (tamanho definido na hora)',
+      modalCompactBody: 'O Docker Desktop será fechado e o WSL será desligado (todas as distros) para compactar o disco virtual. Nenhum dado é apagado. Continuar?',
       reclaimEstimatePlus: 'Estimativa da seleção + limpeza de containers',
       reclaimEstimate: 'Estimativa com base na sua seleção atual',
       noSelection: 'Nenhuma opção selecionada.',
@@ -361,7 +363,12 @@ window.TurboI18n = (function () {
             },
             docker: {
               label: 'Limpeza de containers',
-              hint: 'Remove imagens e containers não usados',
+              hint: 'Remove imagens e containers não usados (volumes ficam intactos)',
+            },
+            dockerCompact: {
+              label: 'Compactar disco do Docker',
+              hint: 'Devolve ao Windows o espaço vazio do disco virtual (VHDX) do Docker; nenhum dado é apagado',
+              caution: 'Fecha o Docker Desktop e desliga o WSL (todas as distros). Pode levar vários minutos',
             },
           },
         },
@@ -463,10 +470,12 @@ window.TurboI18n = (function () {
       loading: 'Loading...',
       noLargeFiles: 'No large files found',
       sizePrefix: 'Size:',
+      dockerDisk: 'virtual disk: {size}',
       reclaimZeroNote: 'Nothing measurable in the current selection',
       reclaimSelect: 'Select what you want to clean',
       reclaimVariable: 'Variable',
       reclaimVariableNote: 'Includes container cleanup (size determined at runtime)',
+      modalCompactBody: 'Docker Desktop will be closed and WSL shut down (all distros) to compact the virtual disk. No data is deleted. Continue?',
       reclaimEstimatePlus: 'Selection estimate + container cleanup',
       reclaimEstimate: 'Estimate based on your current selection',
       noSelection: 'No option selected.',
@@ -627,7 +636,12 @@ window.TurboI18n = (function () {
             },
             docker: {
               label: 'Container cleanup',
-              hint: 'Removes unused images and containers',
+              hint: 'Removes unused images and containers (volumes are kept)',
+            },
+            dockerCompact: {
+              label: 'Compact Docker disk',
+              hint: 'Returns the empty space of the Docker virtual disk (VHDX) to Windows; no data is deleted',
+              caution: 'Closes Docker Desktop and shuts down WSL (all distros). May take several minutes',
             },
           },
         },
@@ -805,8 +819,17 @@ window.TurboI18n = (function () {
     {
       id: 'dev',
       open: false,
-      items: ['xcodeDerivedData', 'gradle', 'android', 'androidEmulator', 'npm', 'pip', 'docker'],
-      warn: { docker: true, androidEmulator: true },
+      items: [
+        'xcodeDerivedData',
+        'gradle',
+        'android',
+        'androidEmulator',
+        'npm',
+        'pip',
+        'docker',
+        'dockerCompact',
+      ],
+      warn: { docker: true, dockerCompact: true, androidEmulator: true },
     },
     { id: 'ai', open: false, items: ['aiCursor', 'aiClaude', 'aiEditors', 'aiAgents', 'aiModels'] },
     { id: 'desktop', open: false, items: ['desktopJunk'], largeFiles: true },
@@ -814,7 +837,7 @@ window.TurboI18n = (function () {
   ];
 
   /** Alvos que nunca vêm marcados por padrão (o usuário precisa escolher). */
-  const UNCHECKED_BY_DEFAULT = new Set(['docker', 'aiModels', 'androidEmulator']);
+  const UNCHECKED_BY_DEFAULT = new Set(['docker', 'dockerCompact', 'aiModels', 'androidEmulator']);
 
   function deepMerge(base, overlay) {
     if (!overlay || typeof overlay !== 'object') return base;

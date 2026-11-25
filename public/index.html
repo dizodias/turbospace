@@ -2117,7 +2117,7 @@
       for (const id of targets) {
         const info = sizeLabels[id];
         if (!info || info.bytes == null || Number.isNaN(Number(info.bytes))) {
-          if (id === 'docker') hasVariable = true;
+          if (id === 'docker' || id === 'dockerCompact') hasVariable = true;
           continue;
         }
         total += Number(info.bytes) || 0;
@@ -2177,7 +2177,10 @@
       for (const [id, info] of Object.entries(sizes || {})) {
         sizeLabels[id] = info;
         const el = document.querySelector(`[data-size-for="${id}"]`);
-        if (el && info?.label != null) el.textContent = `${t('sizePrefix')} ${info.label}`;
+        if (el && info?.label != null) {
+          el.textContent = `${t('sizePrefix')} ${info.label}`;
+          if (info.diskLabel) el.textContent += ` · ${t('dockerDisk', { size: info.diskLabel })}`;
+        }
       }
       if (Object.keys(sizes || {}).length) analyzed = true;
       if (selectSafe) selectSafeTargets();
@@ -2418,6 +2421,17 @@
       pendingStaleRemoval = null;
       if (targets.includes('docker')) {
         const ok = await confirmDocker();
+        if (!ok) {
+          appendLog(t('cleanCancelled'));
+          return;
+        }
+      }
+      if (targets.includes('dockerCompact')) {
+        const ok = await openConfirm({
+          title: t('modalTitle'),
+          bodyHtml: escapeHtml(t('modalCompactBody')),
+          confirmLabel: t('confirm'),
+        });
         if (!ok) {
           appendLog(t('cleanCancelled'));
           return;

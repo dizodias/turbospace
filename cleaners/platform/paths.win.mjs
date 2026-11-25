@@ -57,6 +57,11 @@ export function userPaths() {
     ],
     /** Pasta onde apps Electron (electron-updater) criam <app>-updater com instaladores baixados. */
     appUpdaterRoot: local,
+    /** Discos virtuais do Docker Desktop (WSL 2): atual e caminho antigo. */
+    dockerDisks: [
+      path.join(local, 'Docker', 'wsl', 'disk', 'docker_data.vhdx'),
+      path.join(local, 'Docker', 'wsl', 'data', 'ext4.vhdx'),
+    ],
     steamDefault: path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Steam'),
   };
 }

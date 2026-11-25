@@ -158,11 +158,18 @@ function resolveVolumeId(raw) {
 async function analyzeTargets(targets) {
   const sizes = await analyzeSelected(targets, logLine);
   const labeled = {};
-  for (const [k, v] of Object.entries(sizes)) {
+  for (const [k, raw] of Object.entries(sizes)) {
+    // alvos podem devolver { bytes, diskBytes } com um tamanho extra (ex.: disco do Docker)
+    const isObj = raw !== null && typeof raw === 'object';
+    const v = isObj ? raw.bytes : raw;
     labeled[k] = {
       bytes: v,
       label: v == null ? 'tamanho na limpeza' : formatBytes(v),
     };
+    if (isObj && raw.diskBytes) {
+      labeled[k].diskBytes = raw.diskBytes;
+      labeled[k].diskLabel = formatBytes(raw.diskBytes);
+    }
   }
   return labeled;
 }
